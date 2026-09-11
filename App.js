@@ -210,16 +210,87 @@ function RemindersScreen({ reminders, onAdd, onToggle }) {
   );
 }
 
-function InternshipScreen({ stage, onRecordDay }) {
+function InternshipScreen({ stage, onUpdateStage, onAddDay, onUpdateDay, onDeleteDay }) {
+  const [editingStage, setEditingStage] = useState(false);
+  const [company, setCompany] = useState(stage.company);
+  const [target, setTarget] = useState(String(stage.target));
+  const [showDayForm, setShowDayForm] = useState(false);
+  const [dayForm, setDayForm] = useState({ date: 'Hoje', description: 'Dia realizado', hours: '6' });
+  const [editingDayId, setEditingDayId] = useState(null);
+  const [dayDraft, setDayDraft] = useState({ date: '', description: '', hours: '' });
+
+  const openStageEditor = () => {
+    setCompany(stage.company);
+    setTarget(String(stage.target));
+    setEditingStage((current) => !current);
+  };
+
+  const saveStage = () => {
+    const nextCompany = company.trim();
+    const nextTarget = Number(target);
+    if (!nextCompany || !Number.isFinite(nextTarget) || nextTarget <= 0) {
+      Alert.alert('Confira os dados', 'Informe a empresa e uma meta de horas válida.');
+      return;
+    }
+    onUpdateStage({ company: nextCompany, target: Math.max(Math.round(nextTarget), stage.hours) });
+    setEditingStage(false);
+  };
+
+  const saveNewDay = () => {
+    const hours = Number(dayForm.hours);
+    if (!dayForm.date.trim() || !dayForm.description.trim() || !Number.isFinite(hours) || hours <= 0) {
+      Alert.alert('Confira os dados', 'Preencha a data, a descrição e as horas realizadas.');
+      return;
+    }
+    onAddDay({ date: dayForm.date.trim(), description: dayForm.description.trim(), hours });
+    setDayForm({ date: 'Hoje', description: 'Dia realizado', hours: '6' });
+    setShowDayForm(false);
+  };
+
+  const startDayEdit = (day) => {
+    setEditingDayId(day.id);
+    setDayDraft({ date: day.date, description: day.description, hours: String(day.hours) });
+  };
+
+  const saveDayEdit = () => {
+    const hours = Number(dayDraft.hours);
+    if (!dayDraft.date.trim() || !dayDraft.description.trim() || !Number.isFinite(hours) || hours <= 0) {
+      Alert.alert('Confira os dados', 'Preencha a data, a descrição e as horas realizadas.');
+      return;
+    }
+    onUpdateDay(editingDayId, { date: dayDraft.date.trim(), description: dayDraft.description.trim(), hours });
+    setEditingDayId(null);
+  };
+
+  const confirmDeleteDay = (day) => {
+    Alert.alert('Excluir registro?', `O registro de ${day.date} será removido.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Excluir', style: 'destructive', onPress: () => onDeleteDay(day.id) },
+    ]);
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      <SectionTitle eyebrow="ACOMPANHAMENTO" title="Meu estágio" />
+      <SectionTitle eyebrow="ACOMPANHAMENTO" title="Meu estágio" action={editingStage ? 'Fechar' : 'Editar estágio'} onAction={openStageEditor} />
       <Text style={styles.introText}>Veja sua evolução e registre cada dia realizado.</Text>
+      {editingStage ? (
+        <View style={styles.editorCard}>
+          <Text style={styles.editorLabel}>Empresa</Text>
+          <TextInput value={company} onChangeText={setCompany} placeholder="Nome da empresa" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+          <Text style={styles.editorLabel}>Meta de horas</Text>
+          <TextInput value={target} onChangeText={setTarget} keyboardType="numeric" placeholder="300" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+          <View style={styles.editorActions}>
+            <Pressable style={styles.secondaryButton} onPress={() => setEditingStage(false)}><Text style={styles.secondaryButtonText}>Cancelar</Text></Pressable>
+            <Pressable style={styles.smallPrimaryButton} onPress={saveStage}><Text style={styles.primaryButtonText}>Salvar</Text></Pressable>
+          </View>
+        </View>
+      ) : null}
       <View style={styles.internshipHero}><View><Text style={styles.eyebrowLight}>ESTÁGIO ATUAL</Text><Text style={styles.internshipCompany}>{stage.company}</Text><Text style={styles.internshipMeta}>Desenvolvimento de software · 6h por dia</Text></View><View style={styles.briefcaseCircle}><Icon name="briefcase" size={22} color="#FFFFFF" /></View></View>
       <View style={styles.progressPanel}><View style={styles.progressPanelTop}><Text style={styles.panelLabel}>Progresso total</Text><Text style={styles.panelPercentage}>{stage.progress}%</Text></View><ProgressBar value={stage.progress} color={COLORS.teal} track="#D8F0EC" /><View style={styles.hoursRow}><View><Text style={styles.hoursValue}>{stage.hours}h</Text><Text style={styles.hoursLabel}>realizadas</Text></View><View><Text style={styles.hoursValue}>{stage.target}h</Text><Text style={styles.hoursLabel}>meta total</Text></View><View><Text style={[styles.hoursValue, { color: COLORS.teal }]}>{stage.target - stage.hours}h</Text><Text style={styles.hoursLabel}>restantes</Text></View></View></View>
       <SectionTitle eyebrow="REGISTROS" title="Linha do tempo" />
-      <View style={styles.timelineCard}>{stage.days.map((day, index) => <View key={`${day.date}-${index}`} style={styles.timelineRow}><View style={styles.timelineRail}><View style={styles.timelineDot} />{index < stage.days.length - 1 ? <View style={styles.timelineLine} /> : null}</View><View style={styles.timelineContent}><Text style={styles.timelineDate}>{day.date}</Text><Text style={styles.timelineDescription}>{day.description}</Text><Text style={styles.timelineHours}>{day.hours} horas realizadas</Text></View></View>)}</View>
-      <Pressable style={styles.primaryButton} onPress={onRecordDay}><Icon name="add-circle-outline" size={20} color="#FFFFFF" /><Text style={styles.primaryButtonText}>Registrar dia de estágio</Text></Pressable>
+      <View style={styles.timelineCard}>{stage.days.map((day, index) => <View key={day.id} style={styles.timelineRow}><View style={styles.timelineRail}><View style={styles.timelineDot} />{index < stage.days.length - 1 ? <View style={styles.timelineLine} /> : null}</View><View style={styles.timelineContent}>{editingDayId === day.id ? (<View><TextInput value={dayDraft.date} onChangeText={(value) => setDayDraft((current) => ({ ...current, date: value }))} style={styles.editorInput} placeholder="Data" placeholderTextColor="#9AA0B7" /><TextInput value={dayDraft.description} onChangeText={(value) => setDayDraft((current) => ({ ...current, description: value }))} style={styles.editorInput} placeholder="Descrição" placeholderTextColor="#9AA0B7" /><TextInput value={dayDraft.hours} onChangeText={(value) => setDayDraft((current) => ({ ...current, hours: value }))} keyboardType="numeric" style={styles.editorInput} placeholder="Horas" placeholderTextColor="#9AA0B7" /><View style={styles.editorActions}><Pressable style={styles.secondaryButton} onPress={() => setEditingDayId(null)}><Text style={styles.secondaryButtonText}>Cancelar</Text></Pressable><Pressable style={styles.smallPrimaryButton} onPress={saveDayEdit}><Text style={styles.primaryButtonText}>Salvar</Text></Pressable></View></View>) : (<><View style={styles.timelineHeader}><Text style={styles.timelineDate}>{day.date}</Text><View style={styles.timelineActions}><Pressable onPress={() => startDayEdit(day)} hitSlop={8}><Icon name="create-outline" size={17} color={COLORS.primary} /></Pressable><Pressable onPress={() => confirmDeleteDay(day)} hitSlop={8}><Icon name="trash-outline" size={17} color={COLORS.red} /></Pressable></View></View><Text style={styles.timelineDescription}>{day.description}</Text><Text style={styles.timelineHours}>{day.hours} horas realizadas</Text></>)}</View></View>)}</View>
+      {showDayForm ? (<View style={styles.editorCard}><Text style={styles.editorLabel}>Data</Text><TextInput value={dayForm.date} onChangeText={(value) => setDayForm((current) => ({ ...current, date: value }))} style={styles.editorInput} placeholder="Hoje" placeholderTextColor="#9AA0B7" /><Text style={styles.editorLabel}>Descrição</Text><TextInput value={dayForm.description} onChangeText={(value) => setDayForm((current) => ({ ...current, description: value }))} style={styles.editorInput} placeholder="O que foi feito" placeholderTextColor="#9AA0B7" /><Text style={styles.editorLabel}>Horas</Text><TextInput value={dayForm.hours} onChangeText={(value) => setDayForm((current) => ({ ...current, hours: value }))} keyboardType="numeric" style={styles.editorInput} placeholder="6" placeholderTextColor="#9AA0B7" /><View style={styles.editorActions}><Pressable style={styles.secondaryButton} onPress={() => setShowDayForm(false)}><Text style={styles.secondaryButtonText}>Cancelar</Text></Pressable><Pressable style={styles.smallPrimaryButton} onPress={saveNewDay}><Text style={styles.primaryButtonText}>Adicionar</Text></Pressable></View></View>) : null}
+      <Pressable style={styles.primaryButton} onPress={() => setShowDayForm((current) => !current)}><Icon name="add-circle-outline" size={20} color="#FFFFFF" /><Text style={styles.primaryButtonText}>{showDayForm ? 'Fechar cadastro' : 'Registrar dia de estágio'}</Text></Pressable>
     </ScrollView>
   );
 }
@@ -233,16 +304,19 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('inicio');
   const [subjects, setSubjects] = useState(INITIAL_SUBJECTS);
   const [reminders, setReminders] = useState(INITIAL_REMINDERS);
-  const [stage, setStage] = useState({ company: 'Núcleo Digital', hours: 192, target: 300, progress: 64, days: [{ date: '19 de agosto', description: 'Dia realizado', hours: 6 }, { date: '20 de agosto', description: 'Dia realizado', hours: 6 }, { date: '21 de agosto', description: 'Dia realizado', hours: 6 }] });
+  const [stage, setStage] = useState({ company: 'Núcleo Digital', hours: 192, target: 300, progress: 64, days: [{ id: 1, date: '19 de agosto', description: 'Dia realizado', hours: 6 }, { id: 2, date: '20 de agosto', description: 'Dia realizado', hours: 6 }, { id: 3, date: '21 de agosto', description: 'Dia realizado', hours: 6 }] });
 
   const addAbsence = (id) => setSubjects((current) => current.map((subject) => subject.id === id ? { ...subject, absences: Math.min(subject.absences + 1, subject.limit) } : subject));
   const addReminder = (title) => setReminders((current) => [{ id: Date.now(), title, date: 'Hoje', done: false }, ...current]);
   const toggleReminder = (id) => setReminders((current) => current.map((reminder) => reminder.id === id ? { ...reminder, done: !reminder.done } : reminder));
-  const recordDay = () => setStage((current) => { const hours = Math.min(current.hours + 6, current.target); return { ...current, hours, progress: Math.round((hours / current.target) * 100), days: [{ date: 'Hoje', description: 'Dia realizado', hours: 6 }, ...current.days] }; });
+  const updateStage = (changes) => setStage((current) => { const target = Math.max(changes.target, current.hours); return { ...current, ...changes, target, progress: Math.min(100, Math.round((current.hours / target) * 100)) }; });
+  const addStageDay = (day) => setStage((current) => { const hoursToAdd = Math.min(day.hours, current.target - current.hours); if (hoursToAdd <= 0) return current; const hours = current.hours + hoursToAdd; return { ...current, hours, progress: Math.min(100, Math.round((hours / current.target) * 100)), days: [{ ...day, id: Date.now(), hours: hoursToAdd }, ...current.days] }; });
+  const updateStageDay = (id, changes) => setStage((current) => { const selected = current.days.find((day) => day.id === id); if (!selected) return current; const maxHours = current.target - current.hours + selected.hours; const hours = Math.min(changes.hours, maxHours); const nextDays = current.days.map((day) => day.id === id ? { ...day, ...changes, hours } : day); const totalHours = current.hours - selected.hours + hours; return { ...current, hours: totalHours, progress: Math.min(100, Math.round((totalHours / current.target) * 100)), days: nextDays }; });
+  const deleteStageDay = (id) => setStage((current) => { const selected = current.days.find((day) => day.id === id); if (!selected) return current; const hours = Math.max(0, current.hours - selected.hours); return { ...current, hours, progress: Math.min(100, Math.round((hours / current.target) * 100)), days: current.days.filter((day) => day.id !== id) }; });
   const screen = useMemo(() => {
     if (activeTab === 'faltas') return <AbsencesScreen subjects={subjects} onAddAbsence={addAbsence} />;
     if (activeTab === 'lembretes') return <RemindersScreen reminders={reminders} onAdd={addReminder} onToggle={toggleReminder} />;
-    if (activeTab === 'estagio') return <InternshipScreen stage={stage} onRecordDay={recordDay} />;
+    if (activeTab === 'estagio') return <InternshipScreen stage={stage} onUpdateStage={updateStage} onAddDay={addStageDay} onUpdateDay={updateStageDay} onDeleteDay={deleteStageDay} />;
     if (activeTab === 'atividades') return <CadastroScreen />;
     if (activeTab === 'clima') return <ClimaScreen />;
     return <HomeScreen subjects={subjects} reminders={reminders} stage={stage} goTo={setActiveTab} />;
@@ -297,6 +371,13 @@ const styles = StyleSheet.create({
   stagePercentage: { color: COLORS.teal, fontSize: 25, fontWeight: '800' },
   stageCaption: { color: '#4D7D77', fontSize: 11, marginTop: 9 },
   introText: { color: COLORS.muted, fontSize: 13, lineHeight: 20, marginTop: -6, marginBottom: 22 },
+  editorCard: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.line, borderRadius: 17, padding: 15, marginBottom: 15 },
+  editorLabel: { color: COLORS.ink, fontSize: 11, fontWeight: '800', marginBottom: 6, marginTop: 4 },
+  editorInput: { color: COLORS.ink, backgroundColor: '#F8F9FD', borderWidth: 1, borderColor: COLORS.line, borderRadius: 10, minHeight: 40, paddingHorizontal: 11, fontSize: 13, marginBottom: 9 },
+  editorActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 4 },
+  secondaryButton: { borderWidth: 1, borderColor: COLORS.line, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 9 },
+  secondaryButtonText: { color: COLORS.muted, fontSize: 12, fontWeight: '800' },
+  smallPrimaryButton: { backgroundColor: COLORS.primary, borderRadius: 10, paddingHorizontal: 15, paddingVertical: 9 },
   subjectCard: { backgroundColor: COLORS.card, borderRadius: 18, borderWidth: 1, borderColor: COLORS.line, padding: 16, marginBottom: 13 },
   subjectHeader: { flexDirection: 'row', alignItems: 'center' },
   subjectIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 11 },
@@ -336,6 +417,8 @@ const styles = StyleSheet.create({
   timelineDot: { width: 11, height: 11, borderRadius: 6, backgroundColor: COLORS.teal, borderWidth: 3, borderColor: COLORS.tealSoft, zIndex: 1 },
   timelineLine: { position: 'absolute', top: 10, bottom: -1, width: 1.5, backgroundColor: '#BDE6E1' },
   timelineContent: { flex: 1, paddingLeft: 9, paddingBottom: 12 },
+  timelineHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  timelineActions: { flexDirection: 'row', alignItems: 'center', gap: 13 },
   timelineDate: { color: COLORS.ink, fontSize: 13, fontWeight: '800' },
   timelineDescription: { color: COLORS.muted, fontSize: 11, marginTop: 3 },
   timelineHours: { color: COLORS.teal, fontSize: 10, fontWeight: '700', marginTop: 4 },
