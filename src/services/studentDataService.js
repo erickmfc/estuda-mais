@@ -102,3 +102,12 @@ export async function updateInternshipDay(userId, dayId, changes) {
 export async function deleteInternshipDay(userId, dayId) {
   return unwrap(requireClient().from('internship_days').delete().eq('id', dayId).eq('user_id', userId).select('id').single());
 }
+
+export async function fetchWeatherPreference(userId) {
+  const row = await unwrap(requireClient().from('user_preferences').select('weather_city').eq('user_id', userId).maybeSingle());
+  return row?.weather_city || '';
+}
+
+export async function saveWeatherPreference(userId, city) {
+  return unwrap(requireClient().from('user_preferences').upsert({ user_id: userId, weather_city: city }, { onConflict: 'user_id' }).select('weather_city').single());
+}

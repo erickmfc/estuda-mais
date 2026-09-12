@@ -1,5 +1,11 @@
 create extension if not exists pgcrypto;
 
+create table if not exists public.user_preferences (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  weather_city text not null default '',
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.subjects (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -59,6 +65,14 @@ alter table public.reminders enable row level security;
 alter table public.activities enable row level security;
 alter table public.internships enable row level security;
 alter table public.internship_days enable row level security;
+alter table public.user_preferences enable row level security;
+
+drop policy if exists "user_preferences_select_own" on public.user_preferences;
+create policy "user_preferences_select_own" on public.user_preferences for select to authenticated using ((select auth.uid()) = user_id);
+drop policy if exists "user_preferences_insert_own" on public.user_preferences;
+create policy "user_preferences_insert_own" on public.user_preferences for insert to authenticated with check ((select auth.uid()) = user_id);
+drop policy if exists "user_preferences_update_own" on public.user_preferences;
+create policy "user_preferences_update_own" on public.user_preferences for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 
 drop policy if exists "subjects_select_own" on public.subjects;
 create policy "subjects_select_own" on public.subjects for select to authenticated using ((select auth.uid()) = user_id);
@@ -108,3 +122,4 @@ grant select, insert, update, delete on public.reminders to authenticated;
 grant select, insert, delete on public.activities to authenticated;
 grant select, insert, update, delete on public.internships to authenticated;
 grant select, insert, update, delete on public.internship_days to authenticated;
+grant select, insert, update on public.user_preferences to authenticated;

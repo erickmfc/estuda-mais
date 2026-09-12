@@ -479,10 +479,10 @@ export default function App() {
     if (activeTab === 'lembretes') return <RemindersScreen reminders={reminders} onAdd={addReminder} onToggle={toggleReminder} />;
     if (activeTab === 'estagio') return stage ? <InternshipScreen stage={stage} onUpdateStage={updateStage} onAddDay={addStageDay} onUpdateDay={updateStageDay} onDeleteDay={deleteStageDay} /> : <CreateInternshipScreen onCreate={createStage} />;
     if (activeTab === 'atividades') return <CadastroScreen activities={activities} onAddActivity={addActivity} onRemoveActivity={removeActivity} />;
-    if (activeTab === 'clima') return <ClimaScreen />;
+    if (activeTab === 'clima') return <ClimaScreen userId={userId} />;
     if (activeTab === 'conta') return <LoginScreen session={session} />;
     return <HomeScreen subjects={subjects} reminders={reminders} stage={stage} goTo={setActiveTab} dataStatus={dataStatus} dataError={dataError} onRetry={reloadData} />;
-  }, [activeTab, subjects, reminders, activities, stage, session, dataStatus, dataError, reloadData]);
+  }, [activeTab, subjects, reminders, activities, stage, session, userId, dataStatus, dataError, reloadData]);
 
   if (!authReady) return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={COLORS.background} /><AuthLoadingScreen /></SafeAreaView>;
   if (!session) {

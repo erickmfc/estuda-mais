@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { buscarClima } from '../services/climaService';
+import { fetchWeatherPreference, saveWeatherPreference } from '../services/studentDataService';
 
 const COLORS = {
   background: '#F6F8FC',
@@ -21,11 +22,36 @@ function Icon({ name, size = 20, color = COLORS.ink }) {
   return <Ionicons name={name} size={size} color={color} />;
 }
 
-export default function ClimaScreen() {
+export default function ClimaScreen({ userId }) {
   const [cidade, setCidade] = useState('');
   const [clima, setClima] = useState(null);
   const [status, setStatus] = useState('idle');
   const [erro, setErro] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    if (!userId) return undefined;
+    fetchWeatherPreference(userId).then(async (savedCity) => {
+      if (!mounted || !savedCity) return;
+      setCidade(savedCity);
+      setStatus('loading');
+      try {
+        const resultado = await buscarClima(savedCity);
+        if (mounted) {
+          setClima(resultado);
+          setStatus('success');
+        }
+      } catch (error) {
+        if (mounted) {
+          setStatus('error');
+          setErro(error.message || 'Não foi possível atualizar o clima salvo.');
+        }
+      }
+    }).catch(() => {
+      // A ausência de preferência não impede a busca manual.
+    });
+    return () => { mounted = false; };
+  }, [userId]);
 
   const consultarClima = async () => {
     const cidadeTratada = cidade.trim();
@@ -45,6 +71,9 @@ export default function ClimaScreen() {
       const resultado = await buscarClima(cidadeTratada);
       setClima(resultado);
       setStatus('success');
+      if (userId) {
+        await saveWeatherPreference(userId, cidadeTratada);
+      }
     } catch (error) {
       setClima(null);
       setStatus('error');
