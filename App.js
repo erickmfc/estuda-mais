@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -10,10 +11,12 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import CadastroScreen from './src/screens/CadastroScreen';
 import ClimaScreen from './src/screens/ClimaScreen';
+import DesktopLoginScreen from './src/screens/DesktopLoginScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import { supabase, supabaseConfigured } from './src/services/supabase';
 import {
@@ -63,6 +66,10 @@ function DataStatus({ status, error, onRetry }) {
     return <View style={[styles.dataStatus, styles.dataStatusError]}><Text style={styles.dataStatusText}>{error || 'Não foi possível carregar seus dados.'}</Text><Pressable onPress={onRetry}><Text style={styles.linkText}>Tentar novamente</Text></Pressable></View>;
   }
   return null;
+}
+
+function AuthLoadingScreen() {
+  return <View style={styles.authLoading}><ActivityIndicator size="large" color={COLORS.primary} /><Text style={styles.authLoadingText}>Abrindo seu espaço...</Text></View>;
 }
 
 function SectionTitle({ eyebrow, title, action, onAction }) {
@@ -375,8 +382,10 @@ function TabBar({ active, onChange }) {
 }
 
 export default function App() {
+  const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState('inicio');
   const [session, setSession] = useState(null);
+  const [authReady, setAuthReady] = useState(!supabaseConfigured);
   const [subjects, setSubjects] = useState([]);
   const [reminders, setReminders] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -389,6 +398,10 @@ export default function App() {
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
       if (mounted) setSession(data.session);
+    }).catch(() => {
+      if (mounted) setSession(null);
+    }).finally(() => {
+      if (mounted) setAuthReady(true);
     });
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
     return () => {
@@ -471,11 +484,19 @@ export default function App() {
     return <HomeScreen subjects={subjects} reminders={reminders} stage={stage} goTo={setActiveTab} dataStatus={dataStatus} dataError={dataError} onRetry={reloadData} />;
   }, [activeTab, subjects, reminders, activities, stage, session, dataStatus, dataError, reloadData]);
 
+  if (!authReady) return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={COLORS.background} /><AuthLoadingScreen /></SafeAreaView>;
+  if (!session) {
+    const AuthScreen = Platform.OS === 'web' && width >= 760 ? DesktopLoginScreen : LoginScreen;
+    return <SafeAreaView style={styles.authSafeArea}><StatusBar barStyle="light-content" backgroundColor="#0E1230" /><AuthScreen /></SafeAreaView>;
+  }
   return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={COLORS.background} /><View style={styles.appShell}>{screen}<TabBar active={activeTab} onChange={setActiveTab} /></View></SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.background },
+  authSafeArea: { backgroundColor: '#0E1230', flex: 1 },
+  authLoading: { alignItems: 'center', backgroundColor: COLORS.background, flex: 1, justifyContent: 'center' },
+  authLoadingText: { color: COLORS.muted, fontSize: 13, marginTop: 12 },
   appShell: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
