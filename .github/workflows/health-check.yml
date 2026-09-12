@@ -1,0 +1,21 @@
+name: Health check
+
+on:
+  schedule:
+    - cron: '17 3 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  check-services:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar site na Vercel
+        run: curl --fail --silent --show-error --max-time 20 https://estuda-mais-mauve.vercel.app/ > /dev/null
+
+      - name: Verificar autenticação do Supabase
+        run: |
+          status=$(curl --silent --show-error --max-time 20 --output /dev/null --write-out "%{http_code}" https://erpysbhdajaaniipmxhv.supabase.co/auth/v1/health)
+          case "$status" in
+            2*|3*|4*) exit 0 ;;
+            *) echo "Supabase retornou HTTP $status"; exit 1 ;;
+          esac
