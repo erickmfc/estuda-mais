@@ -14,9 +14,8 @@ const COLORS = {
   redSoft: '#FCE9EC',
 };
 
-export default function CadastroScreen() {
+export default function CadastroScreen({ activities, onAddActivity, onRemoveActivity }) {
   const [texto, setTexto] = useState('');
-  const [itens, setItens] = useState([]);
   const [erro, setErro] = useState('');
 
   const adicionarItem = () => {
@@ -28,23 +27,16 @@ export default function CadastroScreen() {
       return;
     }
 
-    setItens((listaAtual) => [
-      ...listaAtual,
-      { id: `${Date.now()}-${listaAtual.length}`, nome: textoTratado },
-    ]);
+    onAddActivity(textoTratado);
     setTexto('');
     setErro('');
-  };
-
-  const removerItem = (id) => {
-    setItens((listaAtual) => listaAtual.filter((item) => item.id !== id));
   };
 
   return (
     <View style={styles.container}>
       <FlatList
         contentContainerStyle={styles.conteudo}
-        data={itens}
+        data={activities}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={(
           <View>
@@ -82,12 +74,12 @@ export default function CadastroScreen() {
 
             <View style={styles.tituloLista}>
               <Text style={styles.tituloSecao}>Atividades cadastradas</Text>
-              <Text style={styles.contador}>{itens.length}</Text>
+              <Text style={styles.contador}>{activities.length}</Text>
             </View>
           </View>
         )}
         ListEmptyComponent={<Text style={styles.vazio}>Nenhuma atividade cadastrada ainda.</Text>}
-        renderItem={({ item }) => <ItemLista item={item} onRemover={removerItem} />}
+        renderItem={({ item }) => <ItemLista item={item} onRemover={onRemoveActivity} />}
       />
     </View>
   );

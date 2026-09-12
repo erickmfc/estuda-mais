@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  ActivityIndicator,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -15,6 +16,20 @@ import CadastroScreen from './src/screens/CadastroScreen';
 import ClimaScreen from './src/screens/ClimaScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import { supabase, supabaseConfigured } from './src/services/supabase';
+import {
+  createActivity,
+  createInternship,
+  createInternshipDay,
+  createReminder,
+  createSubject,
+  deleteActivity,
+  deleteInternshipDay,
+  fetchStudentData,
+  registerAbsence,
+  updateInternship,
+  updateInternshipDay,
+  updateReminder,
+} from './src/services/studentDataService';
 
 const COLORS = {
   background: '#F6F8FC',
@@ -32,20 +47,22 @@ const COLORS = {
   redSoft: '#FCE9EC',
 };
 
-const INITIAL_SUBJECTS = [
-  { id: 1, name: 'Banco de Dados', teacher: 'Prof. Rafael', absences: 3, limit: 15 },
-  { id: 2, name: 'Desenvolvimento Web', teacher: 'Prof. Camila', absences: 6, limit: 12 },
-  { id: 3, name: 'Laboratório de Apps', teacher: 'Prof. Lucas', absences: 2, limit: 10 },
-];
-
-const INITIAL_REMINDERS = [
-  { id: 1, title: 'Entregar atividade de React Native', date: 'Hoje, 18h', done: false },
-  { id: 2, title: 'Falar com o professor sobre a recuperação', date: 'Amanhã, 10h', done: false },
-  { id: 3, title: 'Enviar documento do estágio', date: '25 de agosto', done: true },
-];
-
 function Icon({ name, size = 20, color = COLORS.ink }) {
   return <Ionicons name={name} size={size} color={color} />;
+}
+
+function currentDateLabel() {
+  return new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+}
+
+function DataStatus({ status, error, onRetry }) {
+  if (status === 'loading') {
+    return <View style={styles.dataStatus}><ActivityIndicator size="small" color={COLORS.primary} /><Text style={styles.dataStatusText}>Carregando seus dados...</Text></View>;
+  }
+  if (status === 'error') {
+    return <View style={[styles.dataStatus, styles.dataStatusError]}><Text style={styles.dataStatusText}>{error || 'Não foi possível carregar seus dados.'}</Text><Pressable onPress={onRetry}><Text style={styles.linkText}>Tentar novamente</Text></Pressable></View>;
+  }
+  return null;
 }
 
 function SectionTitle({ eyebrow, title, action, onAction }) {
@@ -91,7 +108,7 @@ function SummaryCard({ icon, label, value, detail, tone = 'primary', onPress }) 
   );
 }
 
-function HomeScreen({ subjects, reminders, stage, goTo }) {
+function HomeScreen({ subjects, reminders, stage, goTo, dataStatus, dataError, onRetry }) {
   const pendingReminders = reminders.filter((item) => !item.done);
   const attentionSubject = subjects.find((subject) => subject.absences / subject.limit >= 0.5);
 
@@ -100,7 +117,7 @@ function HomeScreen({ subjects, reminders, stage, goTo }) {
       <View style={styles.topRow}>
         <View>
           <Text style={styles.greeting}>Olá, estudante!</Text>
-          <Text style={styles.dateText}>Sexta-feira, 21 de agosto</Text>
+          <Text style={styles.dateText}>{currentDateLabel()}</Text>
         </View>
         <View style={styles.avatar}><Text style={styles.avatarText}>E</Text></View>
       </View>
@@ -117,16 +134,16 @@ function HomeScreen({ subjects, reminders, stage, goTo }) {
       <View style={styles.summaryGrid}>
         <SummaryCard icon="alert-circle-outline" label="Faltas" value={attentionSubject ? 'Atenção' : 'Tranquilo'} detail={`${subjects.reduce((total, item) => total + item.absences, 0)} registradas`} tone="amber" onPress={() => goTo('faltas')} />
         <SummaryCard icon="notifications-outline" label="Lembretes" value={pendingReminders.length} detail="pendentes" tone="primary" onPress={() => goTo('lembretes')} />
-        <SummaryCard icon="briefcase-outline" label="Estágio" value={`${stage.progress}%`} detail="concluído" tone="teal" onPress={() => goTo('estagio')} />
+        <SummaryCard icon="briefcase-outline" label="Estágio" value={stage ? `${stage.progress}%` : '--'} detail={stage ? 'concluído' : 'não cadastrado'} tone="teal" onPress={() => goTo('estagio')} />
       </View>
 
       <SectionTitle eyebrow="ATENÇÃO" title="Acompanhe de perto" action="Ver faltas" onAction={() => goTo('faltas')} />
       <Pressable style={styles.attentionCard} onPress={() => goTo('faltas')}>
         <View style={styles.attentionIcon}><Icon name="time-outline" size={22} color={COLORS.amber} /></View>
         <View style={styles.attentionBody}>
-          <Text style={styles.cardTitle}>{attentionSubject ? attentionSubject.name : 'Suas disciplinas'}</Text>
-          <Text style={styles.cardDescription}>{attentionSubject ? 'Você já usou metade do limite de faltas.' : 'Nenhuma disciplina perto do limite.'}</Text>
-          <ProgressBar value={attentionSubject ? (attentionSubject.absences / attentionSubject.limit) * 100 : 20} color={COLORS.amber} track="#FCECC7" />
+          <Text style={styles.cardTitle}>{attentionSubject ? attentionSubject.name : 'Nenhuma disciplina cadastrada'}</Text>
+          <Text style={styles.cardDescription}>{attentionSubject ? 'Você já usou metade do limite de faltas.' : 'Cadastre suas disciplinas no Supabase para acompanhar faltas.'}</Text>
+          {attentionSubject ? <ProgressBar value={(attentionSubject.absences / attentionSubject.limit) * 100} color={COLORS.amber} track="#FCECC7" /> : null}
         </View>
         <Icon name="chevron-forward" size={19} color={COLORS.muted} />
       </Pressable>
@@ -147,21 +164,45 @@ function HomeScreen({ subjects, reminders, stage, goTo }) {
 
       <Pressable style={styles.stagePreview} onPress={() => goTo('estagio')}>
         <View style={styles.stageTopLine}>
-          <View><Text style={styles.eyebrow}>MEU ESTÁGIO</Text><Text style={styles.stageTitle}>{stage.company}</Text></View>
-          <Text style={styles.stagePercentage}>{stage.progress}%</Text>
+          <View><Text style={styles.eyebrow}>MEU ESTÁGIO</Text><Text style={styles.stageTitle}>{stage ? stage.company : 'Nenhum estágio cadastrado'}</Text></View>
+          <Text style={styles.stagePercentage}>{stage ? `${stage.progress}%` : '--'}</Text>
         </View>
-        <ProgressBar value={stage.progress} color={COLORS.teal} track="#D8F0EC" />
-        <Text style={styles.stageCaption}>{stage.hours} de {stage.target} horas realizadas</Text>
+        {stage ? <><ProgressBar value={stage.progress} color={COLORS.teal} track="#D8F0EC" /><Text style={styles.stageCaption}>{stage.hours} de {stage.target} horas realizadas</Text></> : <Text style={styles.stageCaption}>Toque para cadastrar seu estágio.</Text>}
       </Pressable>
+      <DataStatus status={dataStatus} error={dataError} onRetry={onRetry} />
     </ScrollView>
   );
 }
 
-function AbsencesScreen({ subjects, onAddAbsence }) {
+function AbsencesScreen({ subjects, onAddAbsence, onAddSubject }) {
+  const [subjectForm, setSubjectForm] = useState({ name: '', teacher: '', limit: '' });
+  const [subjectError, setSubjectError] = useState('');
+
+  const addSubject = () => {
+    const name = subjectForm.name.trim();
+    const limit = Number(subjectForm.limit);
+    if (!name || !Number.isFinite(limit) || limit <= 0) {
+      setSubjectError('Informe a disciplina e um limite válido.');
+      return;
+    }
+    onAddSubject({ name, teacher: subjectForm.teacher.trim(), limit: Math.round(limit) });
+    setSubjectForm({ name: '', teacher: '', limit: '' });
+    setSubjectError('');
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <SectionTitle eyebrow="ORGANIZAÇÃO" title="Controle de faltas" />
       <Text style={styles.introText}>Registre suas faltas e acompanhe quanto ainda pode faltar em cada matéria.</Text>
+      <View style={styles.editorCard}>
+        <Text style={styles.editorLabel}>Adicionar disciplina</Text>
+        <TextInput accessibilityLabel="Disciplina" value={subjectForm.name} onChangeText={(value) => setSubjectForm((current) => ({ ...current, name: value }))} placeholder="Nome da disciplina" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+        <TextInput accessibilityLabel="Professor" value={subjectForm.teacher} onChangeText={(value) => setSubjectForm((current) => ({ ...current, teacher: value }))} placeholder="Professor (opcional)" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+        <TextInput accessibilityLabel="Limite de faltas" value={subjectForm.limit} onChangeText={(value) => setSubjectForm((current) => ({ ...current, limit: value }))} keyboardType="numeric" placeholder="Limite de faltas" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+        {subjectError ? <Text style={[styles.feedback, styles.dataStatusError]}>{subjectError}</Text> : null}
+        <Pressable style={styles.smallPrimaryButton} onPress={addSubject}><Text style={styles.primaryButtonText}>Adicionar disciplina</Text></Pressable>
+      </View>
+      {subjects.length === 0 ? <Text style={styles.emptyText}>Nenhuma disciplina cadastrada ainda.</Text> : null}
       {subjects.map((subject) => {
         const percent = (subject.absences / subject.limit) * 100;
         const status = percent >= 50 ? 'Atenção' : 'Situação tranquila';
@@ -208,6 +249,37 @@ function RemindersScreen({ reminders, onAdd, onToggle }) {
         ))}
       </View>
       <View style={styles.tipBox}><Icon name="hand-left-outline" size={20} color={COLORS.primary} /><Text style={styles.tipText}>Toque em um lembrete para marcar como concluído.</Text></View>
+    </ScrollView>
+  );
+}
+
+function CreateInternshipScreen({ onCreate }) {
+  const [company, setCompany] = useState('');
+  const [target, setTarget] = useState('');
+  const [error, setError] = useState('');
+
+  const save = () => {
+    const cleanCompany = company.trim();
+    const hours = Number(target);
+    if (!cleanCompany || !Number.isFinite(hours) || hours <= 0) {
+      setError('Informe a empresa e uma meta de horas válida.');
+      return;
+    }
+    onCreate({ company: cleanCompany, target: Math.round(hours) });
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <SectionTitle eyebrow="ACOMPANHAMENTO" title="Meu estágio" />
+      <Text style={styles.introText}>Cadastre os dados do seu estágio para começar o acompanhamento.</Text>
+      <View style={styles.editorCard}>
+        <Text style={styles.editorLabel}>Empresa</Text>
+        <TextInput value={company} onChangeText={setCompany} placeholder="Nome da empresa" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+        <Text style={styles.editorLabel}>Meta de horas</Text>
+        <TextInput value={target} onChangeText={setTarget} keyboardType="numeric" placeholder="300" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+        {error ? <Text style={[styles.feedback, styles.dataStatusError]}>{error}</Text> : null}
+        <Pressable style={styles.primaryButton} onPress={save}><Text style={styles.primaryButtonText}>Salvar estágio</Text></Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -305,9 +377,12 @@ function TabBar({ active, onChange }) {
 export default function App() {
   const [activeTab, setActiveTab] = useState('inicio');
   const [session, setSession] = useState(null);
-  const [subjects, setSubjects] = useState(INITIAL_SUBJECTS);
-  const [reminders, setReminders] = useState(INITIAL_REMINDERS);
-  const [stage, setStage] = useState({ company: 'Núcleo Digital', hours: 192, target: 300, progress: 64, days: [{ id: 1, date: '19 de agosto', description: 'Dia realizado', hours: 6 }, { id: 2, date: '20 de agosto', description: 'Dia realizado', hours: 6 }, { id: 3, date: '21 de agosto', description: 'Dia realizado', hours: 6 }] });
+  const [subjects, setSubjects] = useState([]);
+  const [reminders, setReminders] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [stage, setStage] = useState(null);
+  const [dataStatus, setDataStatus] = useState('idle');
+  const [dataError, setDataError] = useState('');
 
   useEffect(() => {
     if (!supabaseConfigured || !supabase) return undefined;
@@ -322,22 +397,79 @@ export default function App() {
     };
   }, []);
 
-  const addAbsence = (id) => setSubjects((current) => current.map((subject) => subject.id === id ? { ...subject, absences: Math.min(subject.absences + 1, subject.limit) } : subject));
-  const addReminder = (title) => setReminders((current) => [{ id: Date.now(), title, date: 'Hoje', done: false }, ...current]);
-  const toggleReminder = (id) => setReminders((current) => current.map((reminder) => reminder.id === id ? { ...reminder, done: !reminder.done } : reminder));
-  const updateStage = (changes) => setStage((current) => { const target = Math.max(changes.target, current.hours); return { ...current, ...changes, target, progress: Math.min(100, Math.round((current.hours / target) * 100)) }; });
-  const addStageDay = (day) => setStage((current) => { const hoursToAdd = Math.min(day.hours, current.target - current.hours); if (hoursToAdd <= 0) return current; const hours = current.hours + hoursToAdd; return { ...current, hours, progress: Math.min(100, Math.round((hours / current.target) * 100)), days: [{ ...day, id: Date.now(), hours: hoursToAdd }, ...current.days] }; });
-  const updateStageDay = (id, changes) => setStage((current) => { const selected = current.days.find((day) => day.id === id); if (!selected) return current; const maxHours = current.target - current.hours + selected.hours; const hours = Math.min(changes.hours, maxHours); const nextDays = current.days.map((day) => day.id === id ? { ...day, ...changes, hours } : day); const totalHours = current.hours - selected.hours + hours; return { ...current, hours: totalHours, progress: Math.min(100, Math.round((totalHours / current.target) * 100)), days: nextDays }; });
-  const deleteStageDay = (id) => setStage((current) => { const selected = current.days.find((day) => day.id === id); if (!selected) return current; const hours = Math.max(0, current.hours - selected.hours); return { ...current, hours, progress: Math.min(100, Math.round((hours / current.target) * 100)), days: current.days.filter((day) => day.id !== id) }; });
+  const userId = session?.user?.id;
+  const reloadData = useCallback(async () => {
+    if (!userId || !supabaseConfigured || !supabase) return;
+    setDataStatus('loading');
+    setDataError('');
+    try {
+      const data = await fetchStudentData(userId);
+      setSubjects(data.subjects);
+      setReminders(data.reminders);
+      setActivities(data.activities);
+      setStage(data.stage);
+      setDataStatus('success');
+    } catch (error) {
+      setDataStatus('error');
+      setDataError(error?.message || 'Não foi possível carregar seus dados.');
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      setSubjects([]);
+      setReminders([]);
+      setActivities([]);
+      setStage(null);
+      setDataStatus('idle');
+      setDataError('');
+      return;
+    }
+    reloadData();
+  }, [userId, reloadData]);
+
+  const runDataAction = async (action) => {
+    if (!userId) return;
+    try {
+      setDataError('');
+      await action();
+      await reloadData();
+    } catch (error) {
+      setDataStatus('error');
+      setDataError(error?.message || 'Não foi possível salvar a alteração.');
+    }
+  };
+
+  const addAbsence = (id) => {
+    const subject = subjects.find((item) => item.id === id);
+    if (subject) runDataAction(() => registerAbsence(userId, subject));
+  };
+  const addSubject = (subject) => runDataAction(() => createSubject(userId, subject));
+  const addReminder = (title) => runDataAction(() => createReminder(userId, title));
+  const toggleReminder = (id) => {
+    const reminder = reminders.find((item) => item.id === id);
+    if (reminder) runDataAction(() => updateReminder(userId, reminder));
+  };
+  const addActivity = (name) => runDataAction(() => createActivity(userId, name));
+  const removeActivity = (id) => runDataAction(() => deleteActivity(userId, id));
+  const createStage = (changes) => runDataAction(() => createInternship(userId, changes));
+  const updateStage = (changes) => {
+    if (stage) runDataAction(() => updateInternship(userId, stage, changes));
+  };
+  const addStageDay = (day) => {
+    if (stage) runDataAction(() => createInternshipDay(userId, stage, day));
+  };
+  const updateStageDay = (id, changes) => runDataAction(() => updateInternshipDay(userId, id, changes));
+  const deleteStageDay = (id) => runDataAction(() => deleteInternshipDay(userId, id));
   const screen = useMemo(() => {
-    if (activeTab === 'faltas') return <AbsencesScreen subjects={subjects} onAddAbsence={addAbsence} />;
+    if (activeTab === 'faltas') return <AbsencesScreen subjects={subjects} onAddAbsence={addAbsence} onAddSubject={addSubject} />;
     if (activeTab === 'lembretes') return <RemindersScreen reminders={reminders} onAdd={addReminder} onToggle={toggleReminder} />;
-    if (activeTab === 'estagio') return <InternshipScreen stage={stage} onUpdateStage={updateStage} onAddDay={addStageDay} onUpdateDay={updateStageDay} onDeleteDay={deleteStageDay} />;
-    if (activeTab === 'atividades') return <CadastroScreen />;
+    if (activeTab === 'estagio') return stage ? <InternshipScreen stage={stage} onUpdateStage={updateStage} onAddDay={addStageDay} onUpdateDay={updateStageDay} onDeleteDay={deleteStageDay} /> : <CreateInternshipScreen onCreate={createStage} />;
+    if (activeTab === 'atividades') return <CadastroScreen activities={activities} onAddActivity={addActivity} onRemoveActivity={removeActivity} />;
     if (activeTab === 'clima') return <ClimaScreen />;
     if (activeTab === 'conta') return <LoginScreen session={session} />;
-    return <HomeScreen subjects={subjects} reminders={reminders} stage={stage} goTo={setActiveTab} />;
-  }, [activeTab, subjects, reminders, stage, session]);
+    return <HomeScreen subjects={subjects} reminders={reminders} stage={stage} goTo={setActiveTab} dataStatus={dataStatus} dataError={dataError} onRetry={reloadData} />;
+  }, [activeTab, subjects, reminders, activities, stage, session, dataStatus, dataError, reloadData]);
 
   return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={COLORS.background} /><View style={styles.appShell}>{screen}<TabBar active={activeTab} onChange={setActiveTab} /></View></SafeAreaView>;
 }
@@ -382,6 +514,10 @@ const styles = StyleSheet.create({
   reminderTitle: { color: COLORS.ink, fontSize: 13, fontWeight: '700' },
   reminderDate: { color: COLORS.muted, fontSize: 11, marginTop: 4 },
   emptyText: { color: COLORS.muted, fontSize: 13, paddingVertical: 22, textAlign: 'center' },
+  dataStatus: { alignItems: 'center', backgroundColor: COLORS.primarySoft, borderRadius: 12, flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 8, padding: 11 },
+  dataStatusError: { backgroundColor: COLORS.redSoft, borderRadius: 10, padding: 10 },
+  dataStatusText: { color: COLORS.muted, flex: 1, fontSize: 12, lineHeight: 17 },
+  feedback: { fontSize: 12, lineHeight: 18, marginBottom: 12 },
   stagePreview: { backgroundColor: COLORS.tealSoft, borderRadius: 18, padding: 17, marginBottom: 8 },
   stageTopLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   stageTitle: { color: COLORS.ink, fontSize: 16, fontWeight: '800' },
