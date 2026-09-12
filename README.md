@@ -1,56 +1,84 @@
 # Estuda+
 
-Aplicativo complementar à vida acadêmica, criado para ajudar estudantes a organizar faltas, lembretes e horas de estágio em um único lugar.
+O **Estuda+** é um aplicativo pensado para facilitar a organização da rotina acadêmica. A proposta é reunir, em um só lugar, informações que o aluno costuma acompanhar separadamente, como faltas, lembretes e horas de estágio.
 
-## Problema
+## Sobre o projeto
 
-Os sistemas acadêmicos costumam concentrar informações oficiais, mas nem sempre ajudam o aluno a acompanhar sua rotina, seus lembretes pessoais e a evolução do estágio.
+Durante a graduação, é comum precisar consultar diferentes sistemas, anotações e aplicativos para acompanhar a vida acadêmica. Pensando nisso, o Estuda+ foi criado como uma ferramenta complementar ao portal da faculdade, com foco na organização pessoal do estudante.
+
+O aplicativo não substitui os sistemas oficiais da instituição. A ideia é permitir que o próprio aluno registre e acompanhe informações importantes da sua rotina de forma mais simples.
 
 ## Público-alvo
 
-Estudantes de graduação que precisam acompanhar atividades acadêmicas e compromissos do estágio.
+Estudantes de graduação que precisam organizar disciplinas, faltas, compromissos acadêmicos e atividades relacionadas ao estágio.
 
 ## Objetivo
 
-Oferecer uma visão simples da vida acadêmica do aluno, mostrando o que exige atenção e permitindo registrar informações importantes do dia a dia.
+Centralizar informações importantes da rotina acadêmica e facilitar a visualização do que precisa de atenção.
 
-## MVP da primeira entrega
+## Funcionalidades do MVP
 
-- Dashboard com resumo de faltas, lembretes e estágio;
-- Controle de faltas por disciplina;
-- Registro de novas faltas;
-- Lembretes pessoais com opção de concluir;
-- Controle de horas e percentual do estágio;
-- Linha do tempo dos dias realizados;
-- Cadastro de atividades com validação, listagem e remoção;
-- Interface inicial funcional em React Native.
+Nesta primeira versão, o aplicativo conta com:
 
-## Organização usada na aula
+* dashboard com resumo de faltas, lembretes e estágio;
+* acompanhamento de faltas por disciplina;
+* registro de novas faltas;
+* criação de lembretes pessoais;
+* opção para marcar lembretes como concluídos;
+* acompanhamento das horas realizadas no estágio;
+* cálculo do percentual de conclusão do estágio;
+* histórico dos dias e atividades realizadas;
+* cadastro de atividades;
+* validação dos dados preenchidos;
+* listagem e remoção de registros.
 
-- `src/components/ItemLista.js`: componente reaproveitável de cada item;
-- `src/screens/CadastroScreen.js`: tela com estado, formulário e `FlatList`;
-- `src/services/`: espaço reservado para uma futura API ou banco de dados.
+## Estrutura utilizada
+
+A organização inicial do projeto segue a estrutura trabalhada em aula:
+
+* `src/components/ItemLista.js`
+  Componente reutilizável responsável pela exibição dos itens da lista.
+
+* `src/screens/CadastroScreen.js`
+  Tela responsável pelo formulário, gerenciamento de estado e exibição dos registros utilizando `FlatList`.
+
+* `src/services/`
+  Diretório reservado para uma futura integração com API ou banco de dados.
+
+## Tecnologias
+
+O projeto utiliza:
+
+* React Native;
+* Expo;
+* JavaScript;
+* Git;
+* GitHub.
 
 ## Diferencial
 
-O Estuda+ não substitui o portal da faculdade. Ele complementa as informações oficiais com uma organização mais prática e pessoal para o estudante.
+O principal diferencial do Estuda+ é reunir informações acadêmicas e pessoais em uma interface simples.
 
-## Tecnologias previstas
+Enquanto o portal da faculdade continua sendo a fonte oficial das informações, o Estuda+ funciona como uma ferramenta de acompanhamento diário, permitindo que cada estudante organize sua rotina de acordo com suas próprias necessidades.
 
-- React Native;
-- Expo;
-- JavaScript;
-- Git e GitHub.
+## Status do projeto
 
-## Status
+O projeto está atualmente em fase de **MVP**, com as principais funcionalidades e interações da primeira versão já implementadas.
 
-MVP funcional - primeira tela e principais interações disponíveis.
+Novas funcionalidades e melhorias poderão ser adicionadas conforme o desenvolvimento do aplicativo avançar.
 
-## Como executar
+## Como executar o projeto
+
+Primeiro, instale as dependências:
 
 ```bash
 npm install
+```
+
+Depois, inicie o projeto com o Expo:
+
+```bash
 npx expo start
 ```
 
-Depois, escolha Android, iOS ou Web no painel do Expo.
+Com o Expo iniciado, o projeto poderá ser executado no Android, iOS ou navegador.
