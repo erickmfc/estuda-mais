@@ -43,7 +43,7 @@ A organização inicial do projeto segue a estrutura trabalhada em aula:
   Tela responsável pelo formulário, gerenciamento de estado e exibição dos registros utilizando `FlatList`.
 
 * `src/services/`
-  Diretório reservado para uma futura integração com API ou banco de dados.
+  Serviços de integração, incluindo clima e autenticação com Supabase.
 
 ## Tecnologias
 
@@ -54,6 +54,16 @@ O projeto utiliza:
 * JavaScript;
 * Git;
 * GitHub.
+
+## Configuração do login
+
+O login usa o Supabase Auth. Para ativá-lo localmente:
+
+1. Copie `.env.example` para `.env`.
+2. Preencha `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` com os dados do seu projeto.
+3. Reinicie o Expo depois de salvar o arquivo.
+
+A chave usada no aplicativo é a chave pública do Supabase. Nunca coloque uma chave `service_role` ou `sb_secret_` no aplicativo.
 
 ## Diferencial
 
