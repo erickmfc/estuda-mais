@@ -6,9 +6,11 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.erickmfc.estudamais"
     },
     "android": {
+      "package": "com.erickmfc.estudamais",
       "adaptiveIcon": {
         "backgroundColor": "#5B5CE2"
       }
