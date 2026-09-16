@@ -49,7 +49,9 @@ EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<chave-publica>
 - [x] Tratamento de erros nas operações do app.
 - [x] Layout responsivo para web e celular.
 - [x] Health check automático em `.github/workflows/health-check.yml`.
-- [ ] Teste de cadastro e gravação com uma conta real de avaliação.
+- [x] Teste de gravação autenticada com uma conta de avaliação.
 
-O último item exige uma conta de teste e uma operação autenticada no Supabase;
-não deve ser feito com credenciais pessoais dentro do repositório.
+Validação realizada em 16/09/2026 pelo Chrome na URL pública: foi criado o
+lembrete `P1 - teste de persistência no Supabase`. O registro apareceu na lista
+e permaneceu visível após recarregar a página, confirmando leitura e gravação
+autenticadas no Supabase.
