@@ -17,9 +17,19 @@ e políticas RLS integradas no mesmo serviço.
 - Saída: `dist`
 - Configuração versionada em `vercel.json`.
 - Repositório: https://github.com/erickmfc/estuda-mais
-
+ 
 O deploy é feito pela integração do repositório GitHub com a Vercel. Cada
 alteração na branch `main` pode gerar uma nova publicação.
+
+### Referência visual do login
+
+O layout visual inicial da tela de login foi inspirado no CodePen **Animated
+Login Form - CSS**, de Vincent Van Goggles:
+
+https://codepen.io/Gogh/pen/gOqVqBx
+
+O Estuda+ adaptou a ideia dos anéis animados e a composição visual para o
+próprio fluxo de autenticação com Supabase.
 
 ## Banco de dados e autenticação
 
