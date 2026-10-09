@@ -21,7 +21,9 @@ export function SessionProvider({ children }) {
   const signOutPromiseRef = useRef(null);
   const lastActivityAtRef = useRef(0);
   const idleTimerRef = useRef(null);
+  const authInitTimerRef = useRef(null);
   const mountedRef = useRef(true);
+  const authInitializedRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
 
   const clearIdleTimer = useCallback(() => {
@@ -93,6 +95,11 @@ export function SessionProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!mountedRef.current) return;
+      authInitializedRef.current = true;
+      if (authInitTimerRef.current) {
+        clearTimeout(authInitTimerRef.current);
+        authInitTimerRef.current = null;
+      }
 
       if (event === 'SIGNED_OUT') {
         sessionRef.current = null;
@@ -114,9 +121,19 @@ export function SessionProvider({ children }) {
       setLoading(false);
     });
 
+    // A network failure or a stale persisted token must not strand the app
+    // on its splash screen. Supabase can still deliver a late session event.
+    authInitTimerRef.current = setTimeout(() => {
+      authInitTimerRef.current = null;
+      if (!mountedRef.current || authInitializedRef.current) return;
+      setLoading(false);
+      setAuthNotice('Não foi possível conectar ao serviço de autenticação. Confira sua conexão e tente novamente.');
+    }, 8_000);
+
     return () => {
       mountedRef.current = false;
       clearIdleTimer();
+      if (authInitTimerRef.current) clearTimeout(authInitTimerRef.current);
       subscription.unsubscribe();
     };
   }, [clearIdleTimer, scheduleIdleTimer]);

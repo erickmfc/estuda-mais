@@ -13,6 +13,7 @@ function friendlyError(error) {
   if (message.includes('invalid login credentials')) return 'Email ou senha incorretos.';
   if (message.includes('email not confirmed')) return 'Confirme seu email antes de entrar.';
   if (message.includes('user already registered')) return 'Esse email já está cadastrado.';
+  if (message.includes('fetch') || message.includes('network') || message.includes('load failed')) return 'Não foi possível conectar ao Supabase. Verifique se o serviço está ativo e tente novamente.';
   return error?.message || 'Não foi possível concluir. Tente novamente.';
 }
 
@@ -37,11 +38,15 @@ export default function LoginScreen({ session, notice = '' }) {
     if (password.length < 6) return setStatus({ type: 'error', message: 'A senha precisa ter pelo menos 6 caracteres.' });
     if (!supabaseConfigured || !supabase) return setStatus({ type: 'error', message: 'O login ainda não está configurado.' });
     setStatus({ type: 'loading', message: '' });
-    const result = isLogin ? await supabase.auth.signInWithPassword({ email: cleanEmail, password }) : await supabase.auth.signUp({ email: cleanEmail, password });
-    if (result.error) return setStatus({ type: 'error', message: friendlyError(result.error) });
-    if (isLogin || result.data.session) return setStatus({ type: 'success', message: 'Login realizado. Bem-vindo ao Estuda+.' });
-    setStatus({ type: 'success', message: 'Conta criada. Confirme seu email para entrar.' });
-    setMode('login');
+    try {
+      const result = isLogin ? await supabase.auth.signInWithPassword({ email: cleanEmail, password }) : await supabase.auth.signUp({ email: cleanEmail, password });
+      if (result.error) return setStatus({ type: 'error', message: friendlyError(result.error) });
+      if (isLogin || result.data.session) return setStatus({ type: 'success', message: 'Login realizado. Bem-vindo ao Estuda+.' });
+      setStatus({ type: 'success', message: 'Conta criada. Confirme seu email para entrar.' });
+      setMode('login');
+    } catch (error) {
+      setStatus({ type: 'error', message: friendlyError(error) });
+    }
   };
 
   const recoverPassword = async () => {
@@ -49,8 +54,12 @@ export default function LoginScreen({ session, notice = '' }) {
     if (!cleanEmail || !cleanEmail.includes('@')) return setStatus({ type: 'error', message: 'Digite seu email para recuperar a senha.' });
     if (!supabaseConfigured || !supabase) return setStatus({ type: 'error', message: 'O login ainda não está configurado.' });
     setStatus({ type: 'loading', message: '' });
-    const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, { redirectTo: 'https://estuda-mais-mauve.vercel.app/' });
-    setStatus(error ? { type: 'error', message: friendlyError(error) } : { type: 'success', message: 'Enviamos um link de recuperação para seu email.' });
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, { redirectTo: 'https://estuda-mais-mauve.vercel.app/' });
+      setStatus(error ? { type: 'error', message: friendlyError(error) } : { type: 'success', message: 'Enviamos um link de recuperação para seu email.' });
+    } catch (error) {
+      setStatus({ type: 'error', message: friendlyError(error) });
+    }
   };
 
   const saveProfile = async () => {
@@ -58,8 +67,12 @@ export default function LoginScreen({ session, notice = '' }) {
     if (!cleanName) return setStatus({ type: 'error', message: 'Informe seu nome.' });
     if (!supabaseConfigured || !supabase) return setStatus({ type: 'error', message: 'O login ainda não está configurado.' });
     setStatus({ type: 'loading', message: '' });
-    const { error } = await supabase.auth.updateUser({ data: { full_name: cleanName } });
-    setStatus(error ? { type: 'error', message: friendlyError(error) } : { type: 'success', message: 'Nome atualizado.' });
+    try {
+      const { error } = await supabase.auth.updateUser({ data: { full_name: cleanName } });
+      setStatus(error ? { type: 'error', message: friendlyError(error) } : { type: 'success', message: 'Nome atualizado.' });
+    } catch (error) {
+      setStatus({ type: 'error', message: friendlyError(error) });
+    }
   };
 
   const switchMode = (nextMode) => { setMode(nextMode); setStatus({ type: 'idle', message: '' }); };
