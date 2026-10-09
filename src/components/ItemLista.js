@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import ActivityTouchableOpacity from './ActivityTouchableOpacity';
 
 const COLORS = {
   card: '#FFFFFF',
@@ -17,14 +18,14 @@ export default function ItemLista({ item, onRemover }) {
         <View style={styles.icon}><Text style={styles.iconText}>✓</Text></View>
         <Text style={styles.nome}>{item.nome}</Text>
       </View>
-      <TouchableOpacity
+      <ActivityTouchableOpacity
         accessibilityRole="button"
         accessibilityLabel={`Remover ${item.nome}`}
         style={styles.botaoRemover}
         onPress={() => onRemover(item.id)}
       >
         <Text style={styles.textoBotao}>Remover</Text>
-      </TouchableOpacity>
+      </ActivityTouchableOpacity>
     </View>
   );
 }

@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import ActivityPressable from '../components/ActivityPressable';
+import ActivityTextInput from '../components/ActivityTextInput';
+import { useSession } from '../auth/SessionProvider';
 import { supabase, supabaseConfigured } from '../services/supabase';
 
 const COLORS = { page: '#111638', card: '#1B234D', cardSoft: '#252D59', ink: '#FFFFFF', muted: '#AEB5D5', primary: '#6264F2', primaryLight: '#8889FF', yellow: '#FFF172', line: 'rgba(180,190,240,0.28)', red: '#FF8598', redSoft: 'rgba(255,100,125,0.16)', teal: '#B9C1FF' };
@@ -13,14 +16,20 @@ function friendlyError(error) {
   return error?.message || 'Não foi possível concluir. Tente novamente.';
 }
 
-export default function LoginScreen({ session }) {
+export default function LoginScreen({ session, notice = '' }) {
+  const { signOut } = useSession();
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [profileName, setProfileName] = useState(() => session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || '');
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState({ type: 'idle', message: '' });
   const isLogin = mode === 'login';
   const isLoading = status.type === 'loading';
+
+  useEffect(() => {
+    setProfileName(session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || '');
+  }, [session?.user?.id, session?.user?.user_metadata?.full_name, session?.user?.user_metadata?.name]);
 
   const submit = async () => {
     const cleanEmail = email.trim().toLowerCase();
@@ -44,10 +53,41 @@ export default function LoginScreen({ session }) {
     setStatus(error ? { type: 'error', message: friendlyError(error) } : { type: 'success', message: 'Enviamos um link de recuperação para seu email.' });
   };
 
+  const saveProfile = async () => {
+    const cleanName = profileName.trim();
+    if (!cleanName) return setStatus({ type: 'error', message: 'Informe seu nome.' });
+    if (!supabaseConfigured || !supabase) return setStatus({ type: 'error', message: 'O login ainda não está configurado.' });
+    setStatus({ type: 'loading', message: '' });
+    const { error } = await supabase.auth.updateUser({ data: { full_name: cleanName } });
+    setStatus(error ? { type: 'error', message: friendlyError(error) } : { type: 'success', message: 'Nome atualizado.' });
+  };
+
   const switchMode = (nextMode) => { setMode(nextMode); setStatus({ type: 'idle', message: '' }); };
 
   if (session) {
-    return <ScrollView contentContainerStyle={styles.content}><Brand /><Text style={styles.title}>Conta conectada</Text><Text style={styles.subtitle}>Sua conta está ativa neste dispositivo.</Text><View style={styles.card}><Text style={styles.cardLabel}>Email</Text><Text style={styles.accountEmail}>{session.user?.email}</Text><Pressable accessibilityRole="button" onPress={async () => { setStatus({ type: 'loading', message: '' }); const { error } = await supabase.auth.signOut(); setStatus(error ? { type: 'error', message: friendlyError(error) } : { type: 'success', message: 'Você saiu da conta.' }); }} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Sair da conta</Text></Pressable></View></ScrollView>;
+    return (
+      <ScrollView contentContainerStyle={styles.content}>
+        <Brand />
+        <Text style={styles.title}>Meu perfil</Text>
+        <Text style={styles.subtitle}>Confira os dados da sua conta.</Text>
+        <View style={styles.card}>
+          <Text style={styles.label}>Nome</Text>
+          <View style={styles.inputWrap}>
+            <Ionicons name="person-outline" size={22} color={COLORS.ink} />
+            <ActivityTextInput accessibilityLabel="Nome do perfil" value={profileName} onChangeText={setProfileName} placeholder="Seu nome" placeholderTextColor={COLORS.muted} style={styles.input} />
+          </View>
+          <ActivityPressable accessibilityRole="button" disabled={isLoading} onPress={saveProfile} style={[styles.primaryButton, isLoading && styles.disabled]}>
+            {isLoading ? <ActivityIndicator color={COLORS.ink} /> : <Text style={styles.primaryButtonText}>Salvar nome</Text>}
+          </ActivityPressable>
+          <Text style={styles.cardLabel}>Email da conta</Text>
+          <Text style={styles.accountEmail}>{session.user?.email}</Text>
+          {status.message ? <Text style={[styles.feedback, status.type === 'error' ? styles.error : styles.success]} accessibilityRole="alert">{status.message}</Text> : null}
+          <ActivityPressable accessibilityRole="button" onPress={async () => { setStatus({ type: 'loading', message: '' }); await signOut('manual'); }} style={[styles.primaryButton, styles.signOutButton]}>
+            <Text style={styles.primaryButtonText}>Sair da conta</Text>
+          </ActivityPressable>
+        </View>
+      </ScrollView>
+    );
   }
 
   return (
@@ -61,19 +101,20 @@ export default function LoginScreen({ session }) {
 
       <View style={styles.card}>
         <View style={styles.switcher}>
-          <Pressable accessibilityRole="button" accessibilityState={{ selected: isLogin }} onPress={() => switchMode('login')} style={[styles.switchButton, isLogin && styles.switchActive]}><Ionicons name="person-outline" size={19} color={isLogin ? COLORS.ink : COLORS.muted} /><Text style={[styles.switchText, isLogin && styles.switchTextActive]}>Entrar</Text></Pressable>
-          <Pressable accessibilityRole="button" accessibilityState={{ selected: !isLogin }} onPress={() => switchMode('signup')} style={[styles.switchButton, !isLogin && styles.switchActive]}><Ionicons name="person-add-outline" size={19} color={!isLogin ? COLORS.ink : COLORS.muted} /><Text style={[styles.switchText, !isLogin && styles.switchTextActive]}>Criar conta</Text></Pressable>
+          <ActivityPressable accessibilityRole="button" accessibilityState={{ selected: isLogin }} onPress={() => switchMode('login')} style={[styles.switchButton, isLogin && styles.switchActive]}><Ionicons name="person-outline" size={19} color={isLogin ? COLORS.ink : COLORS.muted} /><Text style={[styles.switchText, isLogin && styles.switchTextActive]}>Entrar</Text></ActivityPressable>
+          <ActivityPressable accessibilityRole="button" accessibilityState={{ selected: !isLogin }} onPress={() => switchMode('signup')} style={[styles.switchButton, !isLogin && styles.switchActive]}><Ionicons name="person-add-outline" size={19} color={!isLogin ? COLORS.ink : COLORS.muted} /><Text style={[styles.switchText, !isLogin && styles.switchTextActive]}>Criar conta</Text></ActivityPressable>
         </View>
         {!supabaseConfigured ? <Text style={styles.setupNotice}>O login ainda precisa ser configurado.</Text> : null}
         <Text style={styles.label}>Email</Text>
-        <View style={styles.inputWrap}><Ionicons name="mail-outline" size={22} color={COLORS.ink} /><TextInput accessibilityLabel="Email" autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} placeholder="seu@email.com" placeholderTextColor={COLORS.muted} style={styles.input} /></View>
+        <View style={styles.inputWrap}><Ionicons name="mail-outline" size={22} color={COLORS.ink} /><ActivityTextInput accessibilityLabel="Email" autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} placeholder="seu@email.com" placeholderTextColor={COLORS.muted} style={styles.input} /></View>
         <Text style={styles.label}>Senha</Text>
-        <View style={styles.inputWrap}><Ionicons name="lock-closed-outline" size={22} color={COLORS.ink} /><TextInput accessibilityLabel="Senha" autoCapitalize="none" autoComplete="password" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} placeholder="Sua senha" placeholderTextColor={COLORS.muted} style={styles.input} /><Pressable accessibilityRole="button" accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'} onPress={() => setShowPassword((value) => !value)}><Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={23} color={COLORS.muted} /></Pressable></View>
-        {isLogin ? <Pressable onPress={recoverPassword} style={styles.forgot}><Text style={styles.forgotText}>Esqueci minha senha?</Text></Pressable> : null}
+        <View style={styles.inputWrap}><Ionicons name="lock-closed-outline" size={22} color={COLORS.ink} /><ActivityTextInput accessibilityLabel="Senha" autoCapitalize="none" autoComplete="password" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} placeholder="Sua senha" placeholderTextColor={COLORS.muted} style={styles.input} /><ActivityPressable accessibilityRole="button" accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'} onPress={() => setShowPassword((value) => !value)}><Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={23} color={COLORS.muted} /></ActivityPressable></View>
+        {notice ? <Text style={[styles.feedback, styles.notice]} accessibilityRole="alert">{notice}</Text> : null}
+        {isLogin ? <ActivityPressable onPress={recoverPassword} style={styles.forgot}><Text style={styles.forgotText}>Esqueci minha senha?</Text></ActivityPressable> : null}
         {status.message ? <Text style={[styles.feedback, status.type === 'error' ? styles.error : styles.success]}>{status.message}</Text> : null}
-        <Pressable accessibilityRole="button" accessibilityLabel={isLogin ? 'Entrar na conta' : 'Criar conta'} disabled={isLoading} onPress={submit} style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed, isLoading && styles.disabled]}>{isLoading ? <ActivityIndicator color={COLORS.ink} /> : <><Text style={styles.primaryButtonText}>{isLogin ? 'Entrar' : 'Criar conta'}</Text><Ionicons name="arrow-forward" size={24} color={COLORS.ink} /></>}</Pressable>
+        <ActivityPressable accessibilityRole="button" accessibilityLabel={isLogin ? 'Entrar na conta' : 'Criar conta'} disabled={isLoading} onPress={submit} style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed, isLoading && styles.disabled]}>{isLoading ? <ActivityIndicator color={COLORS.ink} /> : <><Text style={styles.primaryButtonText}>{isLogin ? 'Entrar' : 'Criar conta'}</Text><Ionicons name="arrow-forward" size={24} color={COLORS.ink} /></>}</ActivityPressable>
         <View style={styles.divider}><View style={styles.dividerLine} /><Text style={styles.dividerText}>ou</Text><View style={styles.dividerLine} /></View>
-        <Pressable onPress={() => switchMode(isLogin ? 'signup' : 'login')} style={styles.outlineButton}><Ionicons name="person-add-outline" size={22} color={COLORS.ink} /><Text style={styles.outlineText}>{isLogin ? 'Criar conta' : 'Voltar ao login'}</Text></Pressable>
+        <ActivityPressable onPress={() => switchMode(isLogin ? 'signup' : 'login')} style={styles.outlineButton}><Ionicons name="person-add-outline" size={22} color={COLORS.ink} /><Text style={styles.outlineText}>{isLogin ? 'Criar conta' : 'Voltar ao login'}</Text></ActivityPressable>
         <View style={styles.security}><Ionicons name="shield-checkmark-outline" size={18} color={COLORS.teal} /><Text style={styles.securityText}>Seus dados estão seguros com a gente.</Text></View>
       </View>
     </ScrollView>
@@ -107,8 +148,10 @@ const styles = StyleSheet.create({
   feedback: { borderRadius: 10, fontSize: 13, lineHeight: 18, marginTop: 14, padding: 10 },
   error: { backgroundColor: COLORS.redSoft, color: COLORS.red },
   success: { backgroundColor: 'rgba(124,255,214,0.14)', color: COLORS.teal },
+  notice: { backgroundColor: 'rgba(124,255,214,0.14)', color: COLORS.teal, marginTop: 0, marginBottom: 12 },
   primaryButton: { alignItems: 'center', backgroundColor: COLORS.primary, borderRadius: 16, flexDirection: 'row', justifyContent: 'center', marginTop: 20, minHeight: 62 },
   primaryButtonText: { color: COLORS.ink, fontSize: 18, fontWeight: '800' },
+  signOutButton: { backgroundColor: '#40496F' },
   buttonPressed: { backgroundColor: '#4D50D5', transform: [{ scale: 0.99 }] },
   disabled: { opacity: 0.65 },
   divider: { alignItems: 'center', flexDirection: 'row', gap: 12, marginVertical: 21 },

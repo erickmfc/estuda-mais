@@ -3,22 +3,22 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
-  Pressable,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   View,
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import ActivityPressable from './src/components/ActivityPressable';
+import ActivityTextInput from './src/components/ActivityTextInput';
 import CadastroScreen from './src/screens/CadastroScreen';
 import ClimaScreen from './src/screens/ClimaScreen';
 import DesktopLoginScreen from './src/screens/DesktopLoginScreen';
 import LoginScreen from './src/screens/LoginScreen';
-import { supabase, supabaseConfigured } from './src/services/supabase';
+import { SessionProvider, useSession } from './src/auth/SessionProvider';
 import {
   createActivity,
   createInternship,
@@ -63,7 +63,7 @@ function DataStatus({ status, error, onRetry }) {
     return <View style={styles.dataStatus}><ActivityIndicator size="small" color={COLORS.primary} /><Text style={styles.dataStatusText}>Carregando seus dados...</Text></View>;
   }
   if (status === 'error') {
-    return <View style={[styles.dataStatus, styles.dataStatusError]}><Text style={styles.dataStatusText}>{error || 'Não foi possível carregar seus dados.'}</Text><Pressable onPress={onRetry}><Text style={styles.linkText}>Tentar novamente</Text></Pressable></View>;
+    return <View style={[styles.dataStatus, styles.dataStatusError]}><Text style={styles.dataStatusText}>{error || 'Não foi possível carregar seus dados.'}</Text><ActivityPressable onPress={onRetry}><Text style={styles.linkText}>Tentar novamente</Text></ActivityPressable></View>;
   }
   return null;
 }
@@ -80,9 +80,9 @@ function SectionTitle({ eyebrow, title, action, onAction }) {
         <Text style={styles.sectionTitle}>{title}</Text>
       </View>
       {action ? (
-        <Pressable onPress={onAction} hitSlop={8}>
+        <ActivityPressable onPress={onAction} hitSlop={8}>
           <Text style={styles.linkText}>{action}</Text>
-        </Pressable>
+        </ActivityPressable>
       ) : null}
     </View>
   );
@@ -104,14 +104,14 @@ function SummaryCard({ icon, label, value, detail, tone = 'primary', onPress }) 
   };
   const selected = tones[tone];
   return (
-    <Pressable style={styles.summaryCard} onPress={onPress}>
+    <ActivityPressable style={styles.summaryCard} onPress={onPress}>
       <View style={[styles.summaryIcon, { backgroundColor: selected.background }]}>
         <Icon name={icon} size={19} color={selected.icon} />
       </View>
       <Text style={styles.summaryLabel}>{label}</Text>
       <Text style={styles.summaryValue}>{value}</Text>
       <Text style={styles.summaryDetail}>{detail}</Text>
-    </Pressable>
+    </ActivityPressable>
   );
 }
 
@@ -145,7 +145,7 @@ function HomeScreen({ subjects, reminders, stage, goTo, dataStatus, dataError, o
       </View>
 
       <SectionTitle eyebrow="ATENÇÃO" title="Acompanhe de perto" action="Ver faltas" onAction={() => goTo('faltas')} />
-      <Pressable style={styles.attentionCard} onPress={() => goTo('faltas')}>
+      <ActivityPressable style={styles.attentionCard} onPress={() => goTo('faltas')}>
         <View style={styles.attentionIcon}><Icon name="time-outline" size={22} color={COLORS.amber} /></View>
         <View style={styles.attentionBody}>
           <Text style={styles.cardTitle}>{attentionSubject ? attentionSubject.name : 'Nenhuma disciplina cadastrada'}</Text>
@@ -153,7 +153,7 @@ function HomeScreen({ subjects, reminders, stage, goTo, dataStatus, dataError, o
           {attentionSubject ? <ProgressBar value={(attentionSubject.absences / attentionSubject.limit) * 100} color={COLORS.amber} track="#FCECC7" /> : null}
         </View>
         <Icon name="chevron-forward" size={19} color={COLORS.muted} />
-      </Pressable>
+      </ActivityPressable>
 
       <SectionTitle eyebrow="PRÓXIMOS PASSOS" title="Lembretes" action="Ver todos" onAction={() => goTo('lembretes')} />
       <View style={styles.listCard}>
@@ -169,13 +169,13 @@ function HomeScreen({ subjects, reminders, stage, goTo, dataStatus, dataError, o
         {pendingReminders.length === 0 ? <Text style={styles.emptyText}>Tudo em dia por aqui.</Text> : null}
       </View>
 
-      <Pressable style={styles.stagePreview} onPress={() => goTo('estagio')}>
+      <ActivityPressable style={styles.stagePreview} onPress={() => goTo('estagio')}>
         <View style={styles.stageTopLine}>
           <View><Text style={styles.eyebrow}>MEU ESTÁGIO</Text><Text style={styles.stageTitle}>{stage ? stage.company : 'Nenhum estágio cadastrado'}</Text></View>
           <Text style={styles.stagePercentage}>{stage ? `${stage.progress}%` : '--'}</Text>
         </View>
         {stage ? <><ProgressBar value={stage.progress} color={COLORS.teal} track="#D8F0EC" /><Text style={styles.stageCaption}>{stage.hours} de {stage.target} horas realizadas</Text></> : <Text style={styles.stageCaption}>Toque para cadastrar seu estágio.</Text>}
-      </Pressable>
+      </ActivityPressable>
       <DataStatus status={dataStatus} error={dataError} onRetry={onRetry} />
     </ScrollView>
   );
@@ -203,11 +203,11 @@ function AbsencesScreen({ subjects, onAddAbsence, onAddSubject }) {
       <Text style={styles.introText}>Registre suas faltas e acompanhe quanto ainda pode faltar em cada matéria.</Text>
       <View style={styles.editorCard}>
         <Text style={styles.editorLabel}>Adicionar disciplina</Text>
-        <TextInput accessibilityLabel="Disciplina" value={subjectForm.name} onChangeText={(value) => setSubjectForm((current) => ({ ...current, name: value }))} placeholder="Nome da disciplina" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
-        <TextInput accessibilityLabel="Professor" value={subjectForm.teacher} onChangeText={(value) => setSubjectForm((current) => ({ ...current, teacher: value }))} placeholder="Professor (opcional)" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
-        <TextInput accessibilityLabel="Limite de faltas" value={subjectForm.limit} onChangeText={(value) => setSubjectForm((current) => ({ ...current, limit: value }))} keyboardType="numeric" placeholder="Limite de faltas" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+        <ActivityTextInput accessibilityLabel="Disciplina" value={subjectForm.name} onChangeText={(value) => setSubjectForm((current) => ({ ...current, name: value }))} placeholder="Nome da disciplina" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+        <ActivityTextInput accessibilityLabel="Professor" value={subjectForm.teacher} onChangeText={(value) => setSubjectForm((current) => ({ ...current, teacher: value }))} placeholder="Professor (opcional)" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+        <ActivityTextInput accessibilityLabel="Limite de faltas" value={subjectForm.limit} onChangeText={(value) => setSubjectForm((current) => ({ ...current, limit: value }))} keyboardType="numeric" placeholder="Limite de faltas" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
         {subjectError ? <Text style={[styles.feedback, styles.dataStatusError]}>{subjectError}</Text> : null}
-        <Pressable style={styles.smallPrimaryButton} onPress={addSubject}><Text style={styles.primaryButtonText}>Adicionar disciplina</Text></Pressable>
+        <ActivityPressable style={styles.smallPrimaryButton} onPress={addSubject}><Text style={styles.primaryButtonText}>Adicionar disciplina</Text></ActivityPressable>
       </View>
       {subjects.length === 0 ? <Text style={styles.emptyText}>Nenhuma disciplina cadastrada ainda.</Text> : null}
       {subjects.map((subject) => {
@@ -225,7 +225,7 @@ function AbsencesScreen({ subjects, onAddAbsence, onAddSubject }) {
             </View>
             <View style={styles.absenceNumbers}><Text style={styles.absenceBig}>{subject.absences}<Text style={styles.absenceSmall}> faltas</Text></Text><Text style={styles.limitText}>limite: {subject.limit}</Text></View>
             <ProgressBar value={percent} color={color} track={percent >= 50 ? '#FCECC7' : '#D8F0EC'} />
-            <View style={styles.subjectFooter}><Text style={styles.remainingText}>Ainda pode faltar <Text style={styles.boldText}>{subject.limit - subject.absences} vezes</Text></Text><Pressable style={styles.outlineButton} onPress={() => onAddAbsence(subject.id)}><Icon name="add" size={16} color={COLORS.primary} /><Text style={styles.outlineButtonText}>Registrar</Text></Pressable></View>
+            <View style={styles.subjectFooter}><Text style={styles.remainingText}>Ainda pode faltar <Text style={styles.boldText}>{subject.limit - subject.absences} vezes</Text></Text><ActivityPressable style={styles.outlineButton} onPress={() => onAddAbsence(subject.id)}><Icon name="add" size={16} color={COLORS.primary} /><Text style={styles.outlineButtonText}>Registrar</Text></ActivityPressable></View>
           </View>
         );
       })}
@@ -245,14 +245,14 @@ function RemindersScreen({ reminders, onAdd, onToggle }) {
     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <SectionTitle eyebrow="ORGANIZAÇÃO" title="Meus lembretes" />
       <Text style={styles.introText}>Anote pequenas tarefas para não deixar nada importante passar.</Text>
-      <View style={styles.inputCard}><TextInput value={text} onChangeText={setText} placeholder="Ex.: falar com o professor" placeholderTextColor="#9AA0B7" style={styles.input} onSubmitEditing={addReminder} /><Pressable style={styles.addButton} onPress={addReminder}><Icon name="add" size={22} color="#FFFFFF" /></Pressable></View>
+      <View style={styles.inputCard}><ActivityTextInput value={text} onChangeText={setText} placeholder="Ex.: falar com o professor" placeholderTextColor="#9AA0B7" style={styles.input} onSubmitEditing={addReminder} /><ActivityPressable style={styles.addButton} onPress={addReminder}><Icon name="add" size={22} color="#FFFFFF" /></ActivityPressable></View>
       <View style={styles.listCard}>
         {reminders.map((reminder, index) => (
-          <Pressable key={reminder.id} style={[styles.reminderRow, index > 0 && styles.rowBorder]} onPress={() => onToggle(reminder.id)}>
+          <ActivityPressable key={reminder.id} style={[styles.reminderRow, index > 0 && styles.rowBorder]} onPress={() => onToggle(reminder.id)}>
             <View style={[styles.checkCircle, reminder.done && styles.checkCircleDone]}>{reminder.done ? <Icon name="checkmark" size={14} color="#FFFFFF" /> : null}</View>
             <View style={styles.reminderTextWrap}><Text style={[styles.reminderTitle, reminder.done && styles.doneText]}>{reminder.title}</Text><Text style={styles.reminderDate}>{reminder.date}</Text></View>
             <Icon name="ellipsis-horizontal" size={18} color={COLORS.muted} />
-          </Pressable>
+          </ActivityPressable>
         ))}
       </View>
       <View style={styles.tipBox}><Icon name="hand-left-outline" size={20} color={COLORS.primary} /><Text style={styles.tipText}>Toque em um lembrete para marcar como concluído.</Text></View>
@@ -281,11 +281,11 @@ function CreateInternshipScreen({ onCreate }) {
       <Text style={styles.introText}>Cadastre os dados do seu estágio para começar o acompanhamento.</Text>
       <View style={styles.editorCard}>
         <Text style={styles.editorLabel}>Empresa</Text>
-        <TextInput value={company} onChangeText={setCompany} placeholder="Nome da empresa" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+        <ActivityTextInput value={company} onChangeText={setCompany} placeholder="Nome da empresa" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
         <Text style={styles.editorLabel}>Meta de horas</Text>
-        <TextInput value={target} onChangeText={setTarget} keyboardType="numeric" placeholder="300" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+        <ActivityTextInput value={target} onChangeText={setTarget} keyboardType="numeric" placeholder="300" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
         {error ? <Text style={[styles.feedback, styles.dataStatusError]}>{error}</Text> : null}
-        <Pressable style={styles.primaryButton} onPress={save}><Text style={styles.primaryButtonText}>Salvar estágio</Text></Pressable>
+        <ActivityPressable style={styles.primaryButton} onPress={save}><Text style={styles.primaryButtonText}>Salvar estágio</Text></ActivityPressable>
       </View>
     </ScrollView>
   );
@@ -357,35 +357,34 @@ function InternshipScreen({ stage, onUpdateStage, onAddDay, onUpdateDay, onDelet
       {editingStage ? (
         <View style={styles.editorCard}>
           <Text style={styles.editorLabel}>Empresa</Text>
-          <TextInput value={company} onChangeText={setCompany} placeholder="Nome da empresa" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+          <ActivityTextInput value={company} onChangeText={setCompany} placeholder="Nome da empresa" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
           <Text style={styles.editorLabel}>Meta de horas</Text>
-          <TextInput value={target} onChangeText={setTarget} keyboardType="numeric" placeholder="300" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
+          <ActivityTextInput value={target} onChangeText={setTarget} keyboardType="numeric" placeholder="300" placeholderTextColor="#9AA0B7" style={styles.editorInput} />
           <View style={styles.editorActions}>
-            <Pressable style={styles.secondaryButton} onPress={() => setEditingStage(false)}><Text style={styles.secondaryButtonText}>Cancelar</Text></Pressable>
-            <Pressable style={styles.smallPrimaryButton} onPress={saveStage}><Text style={styles.primaryButtonText}>Salvar</Text></Pressable>
+            <ActivityPressable style={styles.secondaryButton} onPress={() => setEditingStage(false)}><Text style={styles.secondaryButtonText}>Cancelar</Text></ActivityPressable>
+            <ActivityPressable style={styles.smallPrimaryButton} onPress={saveStage}><Text style={styles.primaryButtonText}>Salvar</Text></ActivityPressable>
           </View>
         </View>
       ) : null}
       <View style={styles.internshipHero}><View><Text style={styles.eyebrowLight}>ESTÁGIO ATUAL</Text><Text style={styles.internshipCompany}>{stage.company}</Text><Text style={styles.internshipMeta}>Desenvolvimento de software · 6h por dia</Text></View><View style={styles.briefcaseCircle}><Icon name="briefcase" size={22} color="#FFFFFF" /></View></View>
       <View style={styles.progressPanel}><View style={styles.progressPanelTop}><Text style={styles.panelLabel}>Progresso total</Text><Text style={styles.panelPercentage}>{stage.progress}%</Text></View><ProgressBar value={stage.progress} color={COLORS.teal} track="#D8F0EC" /><View style={styles.hoursRow}><View><Text style={styles.hoursValue}>{stage.hours}h</Text><Text style={styles.hoursLabel}>realizadas</Text></View><View><Text style={styles.hoursValue}>{stage.target}h</Text><Text style={styles.hoursLabel}>meta total</Text></View><View><Text style={[styles.hoursValue, { color: COLORS.teal }]}>{stage.target - stage.hours}h</Text><Text style={styles.hoursLabel}>restantes</Text></View></View></View>
       <SectionTitle eyebrow="REGISTROS" title="Linha do tempo" />
-      <View style={styles.timelineCard}>{stage.days.map((day, index) => <View key={day.id} style={styles.timelineRow}><View style={styles.timelineRail}><View style={styles.timelineDot} />{index < stage.days.length - 1 ? <View style={styles.timelineLine} /> : null}</View><View style={styles.timelineContent}>{editingDayId === day.id ? (<View><TextInput value={dayDraft.date} onChangeText={(value) => setDayDraft((current) => ({ ...current, date: value }))} style={styles.editorInput} placeholder="Data" placeholderTextColor="#9AA0B7" /><TextInput value={dayDraft.description} onChangeText={(value) => setDayDraft((current) => ({ ...current, description: value }))} style={styles.editorInput} placeholder="Descrição" placeholderTextColor="#9AA0B7" /><TextInput value={dayDraft.hours} onChangeText={(value) => setDayDraft((current) => ({ ...current, hours: value }))} keyboardType="numeric" style={styles.editorInput} placeholder="Horas" placeholderTextColor="#9AA0B7" /><View style={styles.editorActions}><Pressable style={styles.secondaryButton} onPress={() => setEditingDayId(null)}><Text style={styles.secondaryButtonText}>Cancelar</Text></Pressable><Pressable style={styles.smallPrimaryButton} onPress={saveDayEdit}><Text style={styles.primaryButtonText}>Salvar</Text></Pressable></View></View>) : (<><View style={styles.timelineHeader}><Text style={styles.timelineDate}>{day.date}</Text><View style={styles.timelineActions}><Pressable onPress={() => startDayEdit(day)} hitSlop={8}><Icon name="create-outline" size={17} color={COLORS.primary} /></Pressable><Pressable onPress={() => confirmDeleteDay(day)} hitSlop={8}><Icon name="trash-outline" size={17} color={COLORS.red} /></Pressable></View></View><Text style={styles.timelineDescription}>{day.description}</Text><Text style={styles.timelineHours}>{day.hours} horas realizadas</Text></>)}</View></View>)}</View>
-      {showDayForm ? (<View style={styles.editorCard}><Text style={styles.editorLabel}>Data</Text><TextInput value={dayForm.date} onChangeText={(value) => setDayForm((current) => ({ ...current, date: value }))} style={styles.editorInput} placeholder="Hoje" placeholderTextColor="#9AA0B7" /><Text style={styles.editorLabel}>Descrição</Text><TextInput value={dayForm.description} onChangeText={(value) => setDayForm((current) => ({ ...current, description: value }))} style={styles.editorInput} placeholder="O que foi feito" placeholderTextColor="#9AA0B7" /><Text style={styles.editorLabel}>Horas</Text><TextInput value={dayForm.hours} onChangeText={(value) => setDayForm((current) => ({ ...current, hours: value }))} keyboardType="numeric" style={styles.editorInput} placeholder="6" placeholderTextColor="#9AA0B7" /><View style={styles.editorActions}><Pressable style={styles.secondaryButton} onPress={() => setShowDayForm(false)}><Text style={styles.secondaryButtonText}>Cancelar</Text></Pressable><Pressable style={styles.smallPrimaryButton} onPress={saveNewDay}><Text style={styles.primaryButtonText}>Adicionar</Text></Pressable></View></View>) : null}
-      <Pressable style={styles.primaryButton} onPress={() => setShowDayForm((current) => !current)}><Icon name="add-circle-outline" size={20} color="#FFFFFF" /><Text style={styles.primaryButtonText}>{showDayForm ? 'Fechar cadastro' : 'Registrar dia de estágio'}</Text></Pressable>
+      <View style={styles.timelineCard}>{stage.days.map((day, index) => <View key={day.id} style={styles.timelineRow}><View style={styles.timelineRail}><View style={styles.timelineDot} />{index < stage.days.length - 1 ? <View style={styles.timelineLine} /> : null}</View><View style={styles.timelineContent}>{editingDayId === day.id ? (<View><ActivityTextInput value={dayDraft.date} onChangeText={(value) => setDayDraft((current) => ({ ...current, date: value }))} style={styles.editorInput} placeholder="Data" placeholderTextColor="#9AA0B7" /><ActivityTextInput value={dayDraft.description} onChangeText={(value) => setDayDraft((current) => ({ ...current, description: value }))} style={styles.editorInput} placeholder="Descrição" placeholderTextColor="#9AA0B7" /><ActivityTextInput value={dayDraft.hours} onChangeText={(value) => setDayDraft((current) => ({ ...current, hours: value }))} keyboardType="numeric" style={styles.editorInput} placeholder="Horas" placeholderTextColor="#9AA0B7" /><View style={styles.editorActions}><ActivityPressable style={styles.secondaryButton} onPress={() => setEditingDayId(null)}><Text style={styles.secondaryButtonText}>Cancelar</Text></ActivityPressable><ActivityPressable style={styles.smallPrimaryButton} onPress={saveDayEdit}><Text style={styles.primaryButtonText}>Salvar</Text></ActivityPressable></View></View>) : (<><View style={styles.timelineHeader}><Text style={styles.timelineDate}>{day.date}</Text><View style={styles.timelineActions}><ActivityPressable onPress={() => startDayEdit(day)} hitSlop={8}><Icon name="create-outline" size={17} color={COLORS.primary} /></ActivityPressable><ActivityPressable onPress={() => confirmDeleteDay(day)} hitSlop={8}><Icon name="trash-outline" size={17} color={COLORS.red} /></ActivityPressable></View></View><Text style={styles.timelineDescription}>{day.description}</Text><Text style={styles.timelineHours}>{day.hours} horas realizadas</Text></>)}</View></View>)}</View>
+      {showDayForm ? (<View style={styles.editorCard}><Text style={styles.editorLabel}>Data</Text><ActivityTextInput value={dayForm.date} onChangeText={(value) => setDayForm((current) => ({ ...current, date: value }))} style={styles.editorInput} placeholder="Hoje" placeholderTextColor="#9AA0B7" /><Text style={styles.editorLabel}>Descrição</Text><ActivityTextInput value={dayForm.description} onChangeText={(value) => setDayForm((current) => ({ ...current, description: value }))} style={styles.editorInput} placeholder="O que foi feito" placeholderTextColor="#9AA0B7" /><Text style={styles.editorLabel}>Horas</Text><ActivityTextInput value={dayForm.hours} onChangeText={(value) => setDayForm((current) => ({ ...current, hours: value }))} keyboardType="numeric" style={styles.editorInput} placeholder="6" placeholderTextColor="#9AA0B7" /><View style={styles.editorActions}><ActivityPressable style={styles.secondaryButton} onPress={() => setShowDayForm(false)}><Text style={styles.secondaryButtonText}>Cancelar</Text></ActivityPressable><ActivityPressable style={styles.smallPrimaryButton} onPress={saveNewDay}><Text style={styles.primaryButtonText}>Adicionar</Text></ActivityPressable></View></View>) : null}
+      <ActivityPressable style={styles.primaryButton} onPress={() => setShowDayForm((current) => !current)}><Icon name="add-circle-outline" size={20} color="#FFFFFF" /><Text style={styles.primaryButtonText}>{showDayForm ? 'Fechar cadastro' : 'Registrar dia de estágio'}</Text></ActivityPressable>
     </ScrollView>
   );
 }
 
 function TabBar({ active, onChange }) {
   const tabs = [{ key: 'inicio', label: 'Início', icon: 'home-outline', activeIcon: 'home' }, { key: 'faltas', label: 'Faltas', icon: 'book-outline', activeIcon: 'book' }, { key: 'lembretes', label: 'Lembretes', icon: 'notifications-outline', activeIcon: 'notifications' }, { key: 'estagio', label: 'Estágio', icon: 'briefcase-outline', activeIcon: 'briefcase' }, { key: 'atividades', label: 'Atividades', icon: 'list-outline', activeIcon: 'list' }, { key: 'clima', label: 'Clima', icon: 'partly-sunny-outline', activeIcon: 'partly-sunny' }, { key: 'conta', label: 'Conta', icon: 'person-outline', activeIcon: 'person' }];
-  return <View style={styles.tabBar}>{tabs.map((tab) => { const selected = active === tab.key; return <Pressable key={tab.key} style={styles.tabItem} onPress={() => onChange(tab.key)}><Icon name={selected ? tab.activeIcon : tab.icon} size={21} color={selected ? COLORS.primary : COLORS.muted} /><Text style={[styles.tabLabel, selected && styles.tabLabelActive]}>{tab.label}</Text></Pressable>; })}</View>;
+  return <View style={styles.tabBar}>{tabs.map((tab) => { const selected = active === tab.key; return <ActivityPressable key={tab.key} style={styles.tabItem} onPress={() => onChange(tab.key)}><Icon name={selected ? tab.activeIcon : tab.icon} size={21} color={selected ? COLORS.primary : COLORS.muted} /><Text style={[styles.tabLabel, selected && styles.tabLabelActive]}>{tab.label}</Text></ActivityPressable>; })}</View>;
 }
 
-export default function App() {
+function AppContent() {
   const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState('inicio');
-  const [session, setSession] = useState(null);
-  const [authReady, setAuthReady] = useState(!supabaseConfigured);
+  const { session, loading: authReady, authNotice, registerActivity } = useSession();
   const [subjects, setSubjects] = useState([]);
   const [reminders, setReminders] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -393,36 +392,28 @@ export default function App() {
   const [dataStatus, setDataStatus] = useState('idle');
   const [dataError, setDataError] = useState('');
 
-  useEffect(() => {
-    if (!supabaseConfigured || !supabase) return undefined;
-    let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setSession(data.session);
-    }).catch(() => {
-      if (mounted) setSession(null);
-    }).finally(() => {
-      if (mounted) setAuthReady(true);
-    });
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
-    return () => {
-      mounted = false;
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
   const userId = session?.user?.id;
+  const activeUserIdRef = React.useRef(userId);
+  activeUserIdRef.current = userId;
+
+  useEffect(() => {
+    if (!session) setActiveTab('inicio');
+  }, [session]);
+
   const reloadData = useCallback(async () => {
-    if (!userId || !supabaseConfigured || !supabase) return;
+    if (!userId) return;
     setDataStatus('loading');
     setDataError('');
     try {
       const data = await fetchStudentData(userId);
+      if (activeUserIdRef.current !== userId) return;
       setSubjects(data.subjects);
       setReminders(data.reminders);
       setActivities(data.activities);
       setStage(data.stage);
       setDataStatus('success');
     } catch (error) {
+      if (activeUserIdRef.current !== userId) return;
       setDataStatus('error');
       setDataError(error?.message || 'Não foi possível carregar seus dados.');
     }
@@ -446,8 +437,10 @@ export default function App() {
     try {
       setDataError('');
       await action();
+      if (activeUserIdRef.current !== userId) return;
       await reloadData();
     } catch (error) {
+      if (activeUserIdRef.current !== userId) return;
       setDataStatus('error');
       setDataError(error?.message || 'Não foi possível salvar a alteração.');
     }
@@ -487,9 +480,13 @@ export default function App() {
   if (!authReady) return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={COLORS.background} /><AuthLoadingScreen /></SafeAreaView>;
   if (!session) {
     const AuthScreen = Platform.OS === 'web' && width >= 760 ? DesktopLoginScreen : LoginScreen;
-    return <SafeAreaView style={styles.authSafeArea}><StatusBar barStyle="light-content" backgroundColor="#0E1230" /><AuthScreen /></SafeAreaView>;
+    return <SafeAreaView style={styles.authSafeArea} onTouchStart={registerActivity} onTouchMove={registerActivity}><StatusBar barStyle="light-content" backgroundColor="#0E1230" /><AuthScreen notice={authNotice} /></SafeAreaView>;
   }
-  return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={COLORS.background} /><View style={styles.appShell}>{screen}<TabBar active={activeTab} onChange={setActiveTab} /></View></SafeAreaView>;
+  return <SafeAreaView style={styles.safeArea} onTouchStart={registerActivity} onTouchMove={registerActivity}><StatusBar barStyle="dark-content" backgroundColor={COLORS.background} /><View style={styles.appShell}>{screen}<TabBar active={activeTab} onChange={setActiveTab} /></View></SafeAreaView>;
+}
+
+export default function App() {
+  return <SessionProvider><AppContent /></SessionProvider>;
 }
 
 const styles = StyleSheet.create({

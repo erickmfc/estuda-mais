@@ -18,7 +18,7 @@ function Ring({ size, color, reverse, rotation }) {
   return <Animated.View pointerEvents="none" style={[styles.ring, { width: size, height: size, borderColor: color, transform: [{ rotate: spin }] }]} />;
 }
 
-export default function DesktopLoginScreen() {
+export default function DesktopLoginScreen({ notice = '' }) {
   const { width, height } = useWindowDimensions();
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
@@ -63,6 +63,7 @@ export default function DesktopLoginScreen() {
           <Text style={styles.title}>{isLogin ? 'Login' : 'Criar conta'}</Text>
           <Text style={styles.subtitle}>{isLogin ? 'Entre para continuar seus estudos.' : 'Comece a organizar sua rotina.'}</Text>
           {!supabaseConfigured ? <Text style={styles.setupNotice}>Configure o Supabase no arquivo .env para usar o login.</Text> : null}
+          {notice ? <Text style={styles.notice} accessibilityRole="alert">{notice}</Text> : null}
           <View style={styles.switcher}>
             <Pressable accessibilityRole="button" accessibilityState={{ selected: isLogin }} onPress={() => changeMode('login')} style={[styles.switchButton, isLogin && styles.switchActive]}><Text style={[styles.switchText, isLogin && styles.switchTextActive]}>Entrar</Text></Pressable>
             <Pressable accessibilityRole="button" accessibilityState={{ selected: !isLogin }} onPress={() => changeMode('signup')} style={[styles.switchButton, !isLogin && styles.switchActive]}><Text style={[styles.switchText, !isLogin && styles.switchTextActive]}>Criar conta</Text></Pressable>
@@ -92,6 +93,7 @@ const styles = StyleSheet.create({
   title: { color: COLORS.white, fontSize: 29, fontWeight: '700' },
   subtitle: { color: COLORS.muted, fontSize: 12, marginBottom: 15, marginTop: 5, textAlign: 'center' },
   setupNotice: { color: COLORS.yellow, fontSize: 10, lineHeight: 14, marginBottom: 9, textAlign: 'center' },
+  notice: { color: COLORS.teal, fontSize: 10, lineHeight: 14, marginBottom: 9, textAlign: 'center' },
   switcher: { alignSelf: 'stretch', flexDirection: 'row', marginBottom: 10 },
   switchButton: { alignItems: 'center', flex: 1, paddingVertical: 7 },
   switchActive: { borderBottomColor: COLORS.yellow, borderBottomWidth: 1 },

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import ActivityPressable from '../components/ActivityPressable';
+import ActivityTextInput from '../components/ActivityTextInput';
 import { buscarClima } from '../services/climaService';
 import { fetchWeatherPreference, saveWeatherPreference } from '../services/studentDataService';
 
@@ -92,7 +94,7 @@ export default function ClimaScreen({ userId }) {
       <View style={styles.formulario}>
         <View style={styles.inputLinha}>
           <Icon name="location-outline" size={20} color={COLORS.muted} />
-          <TextInput
+          <ActivityTextInput
             accessibilityLabel="Cidade para consultar"
             autoCapitalize="words"
             onChangeText={(valor) => {
@@ -110,7 +112,7 @@ export default function ClimaScreen({ userId }) {
             value={cidade}
           />
         </View>
-        <Pressable
+        <ActivityPressable
           accessibilityRole="button"
           accessibilityLabel="Buscar clima"
           onPress={consultarClima}
@@ -118,7 +120,7 @@ export default function ClimaScreen({ userId }) {
         >
           <Icon name="search-outline" size={19} color="#FFFFFF" />
           <Text style={styles.textoBotao}>Buscar clima</Text>
-        </Pressable>
+        </ActivityPressable>
       </View>
 
       {status === 'loading' ? (

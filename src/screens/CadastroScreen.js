@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import ActivityTouchableOpacity from '../components/ActivityTouchableOpacity';
+import ActivityTextInput from '../components/ActivityTextInput';
 import ItemLista from '../components/ItemLista';
 
 const COLORS = {
@@ -47,7 +49,7 @@ export default function CadastroScreen({ activities, onAddActivity, onRemoveActi
             </Text>
 
             <View style={styles.formulario}>
-              <TextInput
+              <ActivityTextInput
                 accessibilityLabel="Nova atividade"
                 onChangeText={(valor) => {
                   setTexto(valor);
@@ -60,14 +62,14 @@ export default function CadastroScreen({ activities, onAddActivity, onRemoveActi
                 style={styles.input}
                 value={texto}
               />
-              <TouchableOpacity
+              <ActivityTouchableOpacity
                 accessibilityRole="button"
                 accessibilityLabel="Adicionar atividade"
                 onPress={adicionarItem}
                 style={styles.botao}
               >
                 <Text style={styles.textoBotao}>Adicionar atividade</Text>
-              </TouchableOpacity>
+              </ActivityTouchableOpacity>
             </View>
 
             {erro ? <Text style={styles.erro}>{erro}</Text> : null}
