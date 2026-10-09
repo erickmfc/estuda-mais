@@ -477,7 +477,7 @@ function AppContent() {
     return <HomeScreen subjects={subjects} reminders={reminders} stage={stage} goTo={setActiveTab} dataStatus={dataStatus} dataError={dataError} onRetry={reloadData} />;
   }, [activeTab, subjects, reminders, activities, stage, session, userId, dataStatus, dataError, reloadData]);
 
-  if (!authReady) return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={COLORS.background} /><AuthLoadingScreen /></SafeAreaView>;
+  if (authReady) return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={COLORS.background} /><AuthLoadingScreen /></SafeAreaView>;
   if (!session) {
     const AuthScreen = Platform.OS === 'web' && width >= 760 ? DesktopLoginScreen : LoginScreen;
     return <SafeAreaView style={styles.authSafeArea} onTouchStart={registerActivity} onTouchMove={registerActivity}><StatusBar barStyle="light-content" backgroundColor="#0E1230" /><AuthScreen notice={authNotice} /></SafeAreaView>;
