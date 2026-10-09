@@ -14,7 +14,10 @@ const SIGN_OUT_MESSAGES = {
 
 export function SessionProvider({ children }) {
   const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(Boolean(supabaseConfigured && supabase));
+  // Render the sign-in screen while Supabase restores a persisted session.
+  // A stalled auth initialization must never keep the whole app on a spinner;
+  // private screens still require a confirmed session below.
+  const [loading, setLoading] = useState(false);
   const [authNotice, setAuthNotice] = useState('');
   const sessionRef = useRef(null);
   const lockedRef = useRef(false);
