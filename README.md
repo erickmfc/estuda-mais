@@ -23,6 +23,7 @@ Nesta primeira versão, o aplicativo conta com:
 * dashboard com resumo de faltas, lembretes e estágio;
 * acompanhamento de faltas por disciplina;
 * registro de novas faltas;
+* calendário mensal com histórico de faltas por disciplina e data;
 * criação de lembretes pessoais;
 * opção para marcar lembretes como concluídos;
 * acompanhamento das horas realizadas no estágio;
@@ -64,7 +65,7 @@ O login usa o Supabase Auth. Para ativá-lo localmente:
 2. Preencha `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` com os dados do seu projeto.
 3. Reinicie o Expo depois de salvar o arquivo.
 
-Antes do primeiro cadastro, execute o conteúdo de `supabase/schema.sql` no SQL Editor do projeto. Ele cria as tabelas do aplicativo, libera o Data API para usuários autenticados e ativa as políticas RLS por usuário.
+Antes do primeiro cadastro, execute o conteúdo de `supabase/schema.sql` no SQL Editor do projeto. Ele cria as tabelas do aplicativo, libera o Data API para usuários autenticados e ativa as políticas RLS por usuário. Em projetos já em uso, aplique `supabase/migrations/20261030000000_absence_calendar.sql` no SQL Editor para habilitar o histórico e o calendário de faltas. Faltas anteriores à migração continuam no contador, mas não aparecem no calendário porque a data original não foi armazenada.
 
 A chave usada no aplicativo é a chave pública do Supabase. Nunca coloque uma chave `service_role` ou `sb_secret_` no aplicativo.
 

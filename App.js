@@ -117,7 +117,7 @@ function SummaryCard({ icon, label, value, detail, tone = 'primary', onPress }) 
 
 function HomeScreen({ subjects, reminders, stage, goTo, dataStatus, dataError, onRetry }) {
   const pendingReminders = reminders.filter((item) => !item.done);
-  const attentionSubject = subjects.find((subject) => subject.absences / subject.limit >= 0.5);
+  const attentionSubject = subjects.find((subject) => subject.limit > 0 && subject.absences / subject.limit >= 0.5);
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -181,9 +181,65 @@ function HomeScreen({ subjects, reminders, stage, goTo, dataStatus, dataError, o
   );
 }
 
-function AbsencesScreen({ subjects, onAddAbsence, onAddSubject }) {
+function localDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function AbsenceCalendar({ records, selectedDate, onSelectDate }) {
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const [year, month] = selectedDate.split('-').map(Number);
+    return new Date(year, month - 1, 1);
+  });
+  const countsByDate = records.reduce((counts, record) => {
+    counts[record.date] = (counts[record.date] || 0) + 1;
+    return counts;
+  }, {});
+  const firstWeekday = (visibleMonth.getDay() + 6) % 7;
+  const daysInMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0).getDate();
+  const monthName = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(visibleMonth);
+  const cells = [...Array(firstWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, index) => index + 1)];
+  while (cells.length % 7) cells.push(null);
+
+  const changeMonth = (amount) => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + amount, 1));
+  const maxDate = localDateKey(new Date());
+
+  return (
+    <View style={styles.calendarCard}>
+      <View style={styles.calendarHeader}>
+        <ActivityPressable accessibilityRole="button" accessibilityLabel="Mês anterior" onPress={() => changeMonth(-1)} style={styles.calendarNav}><Icon name="chevron-back" size={18} color={COLORS.primary} /></ActivityPressable>
+        <Text style={styles.calendarMonth}>{monthName}</Text>
+        <ActivityPressable accessibilityRole="button" accessibilityLabel="Próximo mês" onPress={() => changeMonth(1)} style={styles.calendarNav}><Icon name="chevron-forward" size={18} color={COLORS.primary} /></ActivityPressable>
+      </View>
+      <View style={styles.calendarGrid}>{['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((day, index) => <Text key={`${day}-${index}`} style={styles.calendarWeekday}>{day}</Text>)}</View>
+      <View style={styles.calendarGrid}>
+        {cells.map((day, index) => {
+          if (!day) return <View key={`blank-${index}`} style={styles.calendarCell} />;
+          const date = localDateKey(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), day));
+          const count = countsByDate[date] || 0;
+          const selected = date === selectedDate;
+          const future = date > maxDate;
+          return (
+            <ActivityPressable key={date} accessibilityRole="button" accessibilityLabel={`${day} de ${monthName}${count ? `, ${count} faltas` : ''}`} accessibilityState={{ selected, disabled: future }} disabled={future} onPress={() => onSelectDate(date)} style={[styles.calendarCell, selected && styles.calendarCellSelected, future && styles.calendarCellDisabled]}>
+              <Text style={[styles.calendarDay, selected && styles.calendarDaySelected, future && styles.calendarDayDisabled]}>{day}</Text>
+              {count > 0 ? <View style={[styles.calendarDot, selected && styles.calendarDotSelected]}><Text style={[styles.calendarCount, selected && styles.calendarCountSelected]}>{count}</Text></View> : null}
+            </ActivityPressable>
+          );
+        })}
+      </View>
+      <View style={styles.calendarLegend}><View style={styles.legendDot} /><Text style={styles.calendarLegendText}>Falta registrada</Text></View>
+    </View>
+  );
+}
+
+function AbsencesScreen({ subjects, absenceRecords, onAddAbsence, onAddSubject }) {
   const [subjectForm, setSubjectForm] = useState({ name: '', teacher: '', limit: '' });
   const [subjectError, setSubjectError] = useState('');
+  const [selectedDate, setSelectedDate] = useState(() => localDateKey(new Date()));
+  const selectedDateRecords = absenceRecords.filter((record) => record.date === selectedDate);
+  const subjectsById = Object.fromEntries(subjects.map((subject) => [subject.id, subject.name]));
 
   const addSubject = () => {
     const name = subjectForm.name.trim();
@@ -209,10 +265,18 @@ function AbsencesScreen({ subjects, onAddAbsence, onAddSubject }) {
         {subjectError ? <Text style={[styles.feedback, styles.dataStatusError]}>{subjectError}</Text> : null}
         <ActivityPressable style={styles.smallPrimaryButton} onPress={addSubject}><Text style={styles.primaryButtonText}>Adicionar disciplina</Text></ActivityPressable>
       </View>
+      <SectionTitle eyebrow="HISTÓRICO" title="Calendário de faltas" />
+      <Text style={styles.calendarHint}>Escolha uma data passada ou hoje. Os números mostram quantas faltas foram registradas naquele dia.</Text>
+      <AbsenceCalendar records={absenceRecords} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+      <Text style={styles.selectedDateLabel}>Data selecionada: <Text style={styles.boldText}>{new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date(`${selectedDate}T12:00:00`))}</Text></Text>
+      <View style={styles.selectedDayCard}>
+        <Text style={styles.selectedDayTitle}>{selectedDateRecords.length ? `${selectedDateRecords.length} falta${selectedDateRecords.length === 1 ? '' : 's'} registrada${selectedDateRecords.length === 1 ? '' : 's'}` : 'Nenhuma falta nesta data'}</Text>
+        {selectedDateRecords.map((record) => <Text key={record.id} style={styles.selectedDaySubject}>• {subjectsById[record.subject_id] || 'Disciplina removida'}</Text>)}
+      </View>
       {subjects.length === 0 ? <Text style={styles.emptyText}>Nenhuma disciplina cadastrada ainda.</Text> : null}
       {subjects.map((subject) => {
-        const percent = (subject.absences / subject.limit) * 100;
-        const status = percent >= 50 ? 'Atenção' : 'Situação tranquila';
+        const percent = subject.limit > 0 ? (subject.absences / subject.limit) * 100 : 0;
+        const status = subject.limit === 0 ? 'Defina o limite' : percent >= 50 ? 'Atenção' : 'Situação tranquila';
         const color = percent >= 50 ? COLORS.amber : COLORS.teal;
         return (
           <View style={styles.subjectCard} key={subject.id}>
@@ -225,7 +289,7 @@ function AbsencesScreen({ subjects, onAddAbsence, onAddSubject }) {
             </View>
             <View style={styles.absenceNumbers}><Text style={styles.absenceBig}>{subject.absences}<Text style={styles.absenceSmall}> faltas</Text></Text><Text style={styles.limitText}>limite: {subject.limit}</Text></View>
             <ProgressBar value={percent} color={color} track={percent >= 50 ? '#FCECC7' : '#D8F0EC'} />
-            <View style={styles.subjectFooter}><Text style={styles.remainingText}>Ainda pode faltar <Text style={styles.boldText}>{subject.limit - subject.absences} vezes</Text></Text><ActivityPressable style={styles.outlineButton} onPress={() => onAddAbsence(subject.id)}><Icon name="add" size={16} color={COLORS.primary} /><Text style={styles.outlineButtonText}>Registrar</Text></ActivityPressable></View>
+            <View style={styles.subjectFooter}><Text style={styles.remainingText}>{subject.limit > 0 ? <>Ainda pode faltar <Text style={styles.boldText}>{Math.max(0, subject.limit - subject.absences)} vezes</Text></> : 'Cadastre um limite para ver o saldo.'}</Text><ActivityPressable accessibilityRole="button" accessibilityLabel={`Registrar falta em ${subject.name}`} style={styles.outlineButton} onPress={() => onAddAbsence(subject.id, selectedDate)}><Icon name="add" size={16} color={COLORS.primary} /><Text style={styles.outlineButtonText}>Registrar</Text></ActivityPressable></View>
           </View>
         );
       })}
@@ -386,6 +450,7 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('inicio');
   const { session, loading: authReady, authNotice, registerActivity } = useSession();
   const [subjects, setSubjects] = useState([]);
+  const [absenceRecords, setAbsenceRecords] = useState([]);
   const [reminders, setReminders] = useState([]);
   const [activities, setActivities] = useState([]);
   const [stage, setStage] = useState(null);
@@ -408,6 +473,7 @@ function AppContent() {
       const data = await fetchStudentData(userId);
       if (activeUserIdRef.current !== userId) return;
       setSubjects(data.subjects);
+      setAbsenceRecords(data.absenceRecords);
       setReminders(data.reminders);
       setActivities(data.activities);
       setStage(data.stage);
@@ -422,6 +488,7 @@ function AppContent() {
   useEffect(() => {
     if (!userId) {
       setSubjects([]);
+      setAbsenceRecords([]);
       setReminders([]);
       setActivities([]);
       setStage(null);
@@ -446,9 +513,8 @@ function AppContent() {
     }
   };
 
-  const addAbsence = (id) => {
-    const subject = subjects.find((item) => item.id === id);
-    if (subject) runDataAction(() => registerAbsence(userId, subject));
+  const addAbsence = (id, date) => {
+    runDataAction(() => registerAbsence(userId, id, date));
   };
   const addSubject = (subject) => runDataAction(() => createSubject(userId, subject));
   const addReminder = (title) => runDataAction(() => createReminder(userId, title));
@@ -468,14 +534,14 @@ function AppContent() {
   const updateStageDay = (id, changes) => runDataAction(() => updateInternshipDay(userId, id, changes));
   const deleteStageDay = (id) => runDataAction(() => deleteInternshipDay(userId, id));
   const screen = useMemo(() => {
-    if (activeTab === 'faltas') return <AbsencesScreen subjects={subjects} onAddAbsence={addAbsence} onAddSubject={addSubject} />;
+    if (activeTab === 'faltas') return <AbsencesScreen subjects={subjects} absenceRecords={absenceRecords} onAddAbsence={addAbsence} onAddSubject={addSubject} />;
     if (activeTab === 'lembretes') return <RemindersScreen reminders={reminders} onAdd={addReminder} onToggle={toggleReminder} />;
     if (activeTab === 'estagio') return stage ? <InternshipScreen stage={stage} onUpdateStage={updateStage} onAddDay={addStageDay} onUpdateDay={updateStageDay} onDeleteDay={deleteStageDay} /> : <CreateInternshipScreen onCreate={createStage} />;
     if (activeTab === 'atividades') return <CadastroScreen activities={activities} onAddActivity={addActivity} onRemoveActivity={removeActivity} />;
     if (activeTab === 'clima') return <ClimaScreen userId={userId} />;
     if (activeTab === 'conta') return <LoginScreen session={session} />;
     return <HomeScreen subjects={subjects} reminders={reminders} stage={stage} goTo={setActiveTab} dataStatus={dataStatus} dataError={dataError} onRetry={reloadData} />;
-  }, [activeTab, subjects, reminders, activities, stage, session, userId, dataStatus, dataError, reloadData]);
+  }, [activeTab, subjects, absenceRecords, reminders, activities, stage, session, userId, dataStatus, dataError, reloadData]);
 
   if (authReady) return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={COLORS.background} /><AuthLoadingScreen /></SafeAreaView>;
   if (!session) {
@@ -549,6 +615,30 @@ const styles = StyleSheet.create({
   secondaryButton: { borderWidth: 1, borderColor: COLORS.line, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 9 },
   secondaryButtonText: { color: COLORS.muted, fontSize: 12, fontWeight: '800' },
   smallPrimaryButton: { backgroundColor: COLORS.primary, borderRadius: 10, paddingHorizontal: 15, paddingVertical: 9 },
+  calendarHint: { color: COLORS.muted, fontSize: 12, lineHeight: 18, marginTop: -6, marginBottom: 12 },
+  calendarCard: { backgroundColor: COLORS.card, borderColor: COLORS.line, borderRadius: 18, borderWidth: 1, marginBottom: 13, padding: 14 },
+  calendarHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  calendarNav: { alignItems: 'center', backgroundColor: COLORS.primarySoft, borderRadius: 10, height: 34, justifyContent: 'center', width: 34 },
+  calendarMonth: { color: COLORS.ink, fontSize: 15, fontWeight: '800', textTransform: 'capitalize' },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calendarWeekday: { color: COLORS.muted, fontSize: 10, fontWeight: '800', textAlign: 'center', width: '14.2857%', paddingVertical: 7 },
+  calendarCell: { alignItems: 'center', borderRadius: 12, height: 42, justifyContent: 'center', marginBottom: 2, width: '14.2857%' },
+  calendarCellSelected: { backgroundColor: COLORS.primary },
+  calendarCellDisabled: { opacity: 0.38 },
+  calendarDay: { color: COLORS.ink, fontSize: 12, fontWeight: '700' },
+  calendarDaySelected: { color: '#FFFFFF' },
+  calendarDayDisabled: { color: COLORS.muted },
+  calendarDot: { alignItems: 'center', backgroundColor: COLORS.redSoft, borderRadius: 7, height: 14, justifyContent: 'center', minWidth: 14, paddingHorizontal: 3, position: 'absolute', right: 2, top: 1 },
+  calendarDotSelected: { backgroundColor: '#FFFFFF' },
+  calendarCount: { color: COLORS.red, fontSize: 8, fontWeight: '800' },
+  calendarCountSelected: { color: COLORS.primary },
+  calendarLegend: { alignItems: 'center', flexDirection: 'row', gap: 6, marginTop: 7 },
+  legendDot: { backgroundColor: COLORS.red, borderRadius: 4, height: 8, width: 8 },
+  calendarLegendText: { color: COLORS.muted, fontSize: 10 },
+  selectedDateLabel: { color: COLORS.muted, fontSize: 11, marginBottom: 8 },
+  selectedDayCard: { backgroundColor: COLORS.primarySoft, borderRadius: 13, marginBottom: 16, padding: 12 },
+  selectedDayTitle: { color: COLORS.ink, fontSize: 12, fontWeight: '800' },
+  selectedDaySubject: { color: COLORS.muted, fontSize: 11, marginTop: 5 },
   subjectCard: { backgroundColor: COLORS.card, borderRadius: 18, borderWidth: 1, borderColor: COLORS.line, padding: 16, marginBottom: 13 },
   subjectHeader: { flexDirection: 'row', alignItems: 'center' },
   subjectIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 11 },

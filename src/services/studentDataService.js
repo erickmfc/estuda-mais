@@ -37,6 +37,10 @@ async function unwrap(query) {
   return data;
 }
 
+function isMissingAbsenceTable(error) {
+  return error?.code === '42P01' || error?.code === 'PGRST205' || /absence_records.*(does not exist|schema cache)/i.test(error?.message || '');
+}
+
 export async function fetchStudentData(userId) {
   const client = requireClient();
   const [subjects, reminders, activities, internship] = await Promise.all([
@@ -46,21 +50,33 @@ export async function fetchStudentData(userId) {
     unwrap(client.from('internships').select('id,company,target_hours').eq('user_id', userId).maybeSingle()),
   ]);
 
+  let absenceRecords = [];
+  const { data: absenceData, error: absenceError } = await client.from('absence_records')
+    .select('id,subject_id,absence_date').eq('user_id', userId).order('absence_date', { ascending: false });
+  if (absenceError && !isMissingAbsenceTable(absenceError)) throw absenceError;
+  if (!absenceError) absenceRecords = absenceData || [];
+
   const days = internship
     ? await unwrap(client.from('internship_days').select('id,date_label,description,hours').eq('user_id', userId).eq('internship_id', internship.id).order('date_label', { ascending: false }))
     : [];
 
   return {
     subjects: subjects.map(mapSubject),
+    absenceRecords: absenceRecords.map((record) => ({ ...record, date: record.absence_date })),
     reminders: reminders.map(mapReminder),
     activities: activities.map(mapActivity),
     stage: mapInternship(internship, days),
   };
 }
 
-export async function registerAbsence(userId, subject) {
-  const nextAbsences = Math.min(subject.absences + 1, subject.limit);
-  return unwrap(requireClient().from('subjects').update({ absences: nextAbsences }).eq('id', subject.id).eq('user_id', userId).select('id').single());
+export async function registerAbsence(userId, subjectId, date) {
+  const { data, error } = await requireClient().from('absence_records')
+    .insert({ user_id: userId, subject_id: subjectId, absence_date: date }).select('id').single();
+  if (isMissingAbsenceTable(error)) {
+    throw new Error('O histórico de faltas ainda não foi habilitado no banco. Aplique a migração supabase/migrations/20261030000000_absence_calendar.sql.');
+  }
+  if (error) throw error;
+  return data;
 }
 
 export async function createSubject(userId, { name, teacher, limit }) {
