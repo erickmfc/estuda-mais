@@ -2,5 +2,12 @@
   "buildCommand": "npx expo export --platform web",
   "outputDirectory": "dist",
   "framework": null,
-  "cleanUrls": true
+  "cleanUrls": true,
+  "crons": [
+    {
+      "path": "/api/keepalive",
+      "schedule": "17 3 * * *"
+    }
+  ]
 }
+
