@@ -2,20 +2,27 @@ name: Health check
 
 on:
   schedule:
-    - cron: '17 3 */3 * *'
+    - cron: '17 */6 * * *'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   check-services:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://erpysbhdajaaniipmxhv.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_Q9Dx-vDdcmvaO0ec8oT60Q_2_1ssitG
     steps:
       - name: Verificar site na Vercel
         run: curl --fail --silent --show-error --max-time 20 https://estuda-mais-mauve.vercel.app/ > /dev/null
 
-      - name: Verificar autenticação do Supabase
+      - name: Consultar linha pública de saúde no banco Supabase
         run: |
-          status=$(curl --silent --show-error --max-time 20 --output /dev/null --write-out "%{http_code}" https://erpysbhdajaaniipmxhv.supabase.co/auth/v1/health)
-          case "$status" in
-            2*|3*|4*) exit 0 ;;
-            *) echo "Supabase retornou HTTP $status"; exit 1 ;;
-          esac
+          response=$(curl --fail --silent --show-error --max-time 20 --retry 3 --retry-all-errors \
+            --header "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+            --header "accept: application/json" \
+            "$SUPABASE_URL/rest/v1/project_health?select=id&id=eq.1&limit=1")
+          echo "$response" | jq --exit-status 'length == 1 and .[0].id == 1' > /dev/null
+
