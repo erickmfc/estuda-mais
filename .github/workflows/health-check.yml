@@ -1,6 +1,12 @@
 name: Health check
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/health-check.yml
+      - supabase/migrations/20261031000000_project_health.sql
   schedule:
     - cron: '17 */6 * * *'
   workflow_dispatch:
