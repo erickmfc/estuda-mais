@@ -8,6 +8,7 @@ if (Platform.OS !== 'web') Notifications.setNotificationHandler({ handleNotifica
 
 const C = { bg: '#F5F6FF', card: '#FFFFFF', ink: '#161B3D', muted: '#515A78', primary: '#4447C4', danger: '#A7193D' };
 const statusName = { approved: 'Aprovado', rejected: 'Rejeitado' };
+const reviewOf = (record) => Array.isArray(record.p2_reviews) ? record.p2_reviews[0] : record.p2_reviews;
 
 export default function P2Screen({ session }) {
   const userId = session.user.id;
@@ -47,7 +48,7 @@ export default function P2Screen({ session }) {
       const [rows, local] = await Promise.all([loadSubmissions(), getPending(userId)]);
       setRecords(rows); setPending(local);
       if (sync.synced) setMessage(`${sync.synced} registro(s) sincronizado(s).`);
-      const reviewed = rows.filter((r) => r.student_id === userId && r.p2_reviews?.length).length;
+      const reviewed = rows.filter((r) => r.student_id === userId && reviewOf(r)).length;
       const seenKey = `p2-review-count:${userId}`;
       const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
       const previous = Number(await AsyncStorage.getItem(seenKey) || reviewed);
@@ -89,7 +90,7 @@ export default function P2Screen({ session }) {
 
   const review = async (record, decision) => {
     setBusy(true); setError('');
-    try { await reviewSubmission(userId, record.id, decision, note); setNote(''); setMessage('Revisão registrada na nuvem.'); await refresh(); }
+    try { const saved = await reviewSubmission(userId, record.id, decision, note); setNote(''); setMessage(saved.alreadyReviewed ? 'Esta atividade já foi revisada. Estado atualizado.' : 'Revisão registrada na nuvem.'); await refresh(); }
     catch (e) { setError(e.message || 'Não foi possível revisar.'); }
     finally { setBusy(false); }
   };
@@ -113,7 +114,7 @@ export default function P2Screen({ session }) {
     <Text style={s.heading}>{profile?.role === 'advisor' ? 'Atividades dos alunos' : 'Minhas atividades'}</Text>
     {!records.length && <Text style={s.body}>Nenhuma atividade recebida. Atualize após conectar à internet.</Text>}
     {records.map((r) => {
-      const result = r.p2_reviews?.[0];
+      const result = reviewOf(r);
       return <View style={s.card} key={r.id}>
         <Text style={s.heading}>{r.description}</Text>
         <Text style={s.body}>{r.hours} hora(s) · {new Date(r.created_at).toLocaleDateString('pt-BR')}</Text>

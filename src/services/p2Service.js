@@ -63,5 +63,11 @@ export async function reviewSubmission(userId, submissionId, decision, note) {
   const { error } = await supabase.from('p2_reviews').insert({
     submission_id: submissionId, advisor_id: userId, decision, note: note.trim(),
   });
+  if (error?.code === '23505') {
+    const existing = await supabase.from('p2_reviews').select('submission_id').eq('submission_id', submissionId).maybeSingle();
+    if (existing.error || !existing.data) throw error;
+    return { alreadyReviewed: true };
+  }
   if (error) throw error;
+  return { alreadyReviewed: false };
 }
