@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as Network from 'expo-network';
 import * as Notifications from 'expo-notifications';
-import { enqueueSubmission, getPending, loadProfile, loadSubmissions, reviewSubmission, syncPending } from '../services/p2Service';
+import { enqueueSubmission, getCachedProfile, getPending, loadProfile, loadSubmissions, reviewSubmission, syncPending } from '../services/p2Service';
 
 if (Platform.OS !== 'web') Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }) });
 
@@ -42,6 +43,14 @@ export default function P2Screen({ session }) {
     if (!unlocked) return;
     setBusy(true); setError('');
     try {
+      setPending(await getPending(userId));
+      const cached = await getCachedProfile(userId);
+      if (cached) setProfile(cached);
+      const network = await Network.getNetworkStateAsync();
+      if (!network.isConnected || network.isInternetReachable === false) {
+        setMessage('Sem internet. As atividades pendentes permanecem salvas no aparelho.');
+        return;
+      }
       const p = await loadProfile(userId);
       setProfile(p);
       const sync = await syncPending(userId);
@@ -111,6 +120,11 @@ export default function P2Screen({ session }) {
       <Text style={s.body}>Pendentes de envio: {pending.length}</Text>
       {!profile.advisor_id && <Text style={s.error}>Peça ao responsável para vincular um orientador a esta conta.</Text>}
     </View>}
+    {pending.map((item) => <View style={s.card} key={item.id}>
+      <Text style={s.heading}>{item.description}</Text>
+      <Text style={s.body}>{item.hours} hora(s)</Text>
+      <Text style={s.body}>Estado: Pendente de envio</Text>
+    </View>)}
     <Text style={s.heading}>{profile?.role === 'advisor' ? 'Atividades dos alunos' : 'Minhas atividades'}</Text>
     {!records.length && <Text style={s.body}>Nenhuma atividade recebida. Atualize após conectar à internet.</Text>}
     {records.map((r) => {

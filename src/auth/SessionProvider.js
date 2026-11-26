@@ -8,7 +8,6 @@ const SessionContext = createContext(null);
 
 const SIGN_OUT_MESSAGES = {
   idle: 'Sessão encerrada após 2 minutos sem atividade. Entre novamente.',
-  background: 'Sessão encerrada ao sair do aplicativo. Entre novamente.',
   manual: 'Você saiu da sua conta.',
 };
 
@@ -145,31 +144,27 @@ export function SessionProvider({ children }) {
     const subscription = AppState.addEventListener('change', (nextState) => {
       const previousState = appStateRef.current;
       appStateRef.current = nextState;
-      if (nextState !== 'active' && previousState === 'active' && sessionRef.current) {
-        void signOut('background');
-      }
+      if (nextState === 'active' && previousState !== 'active' && sessionRef.current) registerActivity();
     });
     return () => subscription.remove();
-  }, [signOut]);
+  }, [registerActivity]);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || !session) return undefined;
 
     const onActivity = () => registerActivity();
     const onVisibilityChange = () => {
-      if (document.visibilityState !== 'visible') void signOut('background');
+      if (document.visibilityState === 'visible') registerActivity();
     };
     const activityEvents = ['pointerdown', 'keydown', 'input', 'scroll', 'touchstart'];
     activityEvents.forEach((eventName) => window.addEventListener(eventName, onActivity, { passive: true }));
     document.addEventListener('visibilitychange', onVisibilityChange);
-    window.addEventListener('pagehide', onVisibilityChange);
 
     return () => {
       activityEvents.forEach((eventName) => window.removeEventListener(eventName, onActivity));
       document.removeEventListener('visibilitychange', onVisibilityChange);
-      window.removeEventListener('pagehide', onVisibilityChange);
     };
-  }, [registerActivity, session, signOut]);
+  }, [registerActivity, session]);
 
   return (
     <SessionContext.Provider value={{ session, loading, authNotice, registerActivity, signOut }}>

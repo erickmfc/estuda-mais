@@ -14,10 +14,11 @@ Executada em 26/11/2026 no projeto Supabase `erpysbhdajaaniipmxhv`. As consultas
 | `absence_records` e três tabelas P2 | RLS ativada. |
 | Expo Doctor | 21/21 verificações aprovadas. |
 | Exportação web e Android | Compilação dos bundles concluída. |
+| Fila offline | `npm run test:p2`: três casos aprovados, incluindo reenvio idempotente e gravação simultânea. |
 
 ## Testes restantes no dispositivo
 
-É necessário abrir o app em um celular ou emulador com biometria e com as duas contas de teste para observar o prompt nativo, a notificação local, a alternância entre usuários e o ciclo de desconectar e reconectar. Este ambiente não tinha `adb` ou emulador instalado e as senhas das contas existentes não foram fornecidas. Os testes de banco acima verificam as permissões, mas não substituem essa demonstração.
+É necessário abrir o app em um celular ou emulador com biometria e com as duas contas de teste para observar o prompt nativo, a notificação local, a alternância entre usuários e o ciclo de desconectar e reconectar. O usuário relatou que conseguiu executar a biometria, mas este ambiente não tinha `adb` ou emulador instalado nem as senhas das contas existentes para reproduzir o teste. Os testes de banco e da fila acima não substituem essa demonstração.
 
 ## Dependências
 

@@ -116,11 +116,11 @@ Na aba **Compart.**, o aluno envia um relato de estágio e o orientador aprova o
 | A: fluxo completo | Entre como aluno, abra **Compart.**, cadastre atividade e horas, sincronize; entre como orientador e aprove; volte ao aluno e atualize. O resultado vem do banco. |
 | B: segurança | Tente consultar a API sem sessão e tente inserir revisão como aluno ou atividade como orientador. O banco deve negar. |
 | C: recurso nativo | Abra **Compart.** no celular, conclua a biometria; saia da aba e repita cancelando ou falhando. O conteúdo só aparece após êxito e com sessão ativa. |
-| D: falta de rede | Após entrar e carregar o perfil, desligue a rede, salve uma atividade e veja a contagem pendente. Ligue a rede; **Atualizar e sincronizar** envia o mesmo UUID, sem duplicar. |
+| D: falta de rede | Após entrar e carregar o perfil, desligue a rede, salve uma atividade e veja a atividade marcada **Pendente de envio**. Ligue a rede; **Atualizar e sincronizar** envia o mesmo UUID, sem duplicar. Não recarregue a página do navegador enquanto estiver sem conexão. |
 | E: resiliência | Tente horas inválidas, encerre a sessão, e teste a API indisponível. O app deve mostrar erro e manter a fila local para nova tentativa. |
 
 Ao detectar uma nova revisão na consulta periódica, o app solicita permissão e agenda uma notificação local; se a permissão for negada, mostra aviso na tela. A notificação depende de o app consultar a revisão; não é push remoto.
 
 ### Evidências de verificação
 
-Os resultados de RLS, API e compilação estão em [`docs/p2-verificacao.md`](docs/p2-verificacao.md). A demonstração de biometria, notificação e sincronização exige um aparelho ou emulador e duas contas com senhas válidas.
+Os resultados de RLS, API e compilação estão em [`docs/p2-verificacao.md`](docs/p2-verificacao.md). Execute `npm run test:p2` para verificar a fila offline, o reenvio sem duplicação e a preservação de uma nova atividade durante a sincronização. A demonstração de biometria e notificação exige um aparelho ou emulador e duas contas com senhas válidas.
