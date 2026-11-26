@@ -96,3 +96,31 @@ npx expo start
 ```
 
 Com o Expo iniciado, o projeto poderá ser executado no Android, iOS ou navegador.
+
+## Avaliação P2: estágio compartilhado
+
+Na aba **Compart.**, o aluno envia um relato de estágio e o orientador aprova ou rejeita. Os dados ficam no Supabase; as tabelas `p2_profiles`, `p2_submissions` e `p2_reviews` usam RLS para validar as ações no servidor. O aplicativo usa apenas a chave pública do Supabase. O serviço de backend é a API REST do Supabase em `https://erpysbhdajaaniipmxhv.supabase.co/rest/v1/`.
+
+### Preparação
+
+1. Execute `npm install`, copie `.env.example` para `.env` e coloque a URL e a chave pública do projeto Supabase. A chave de serviço **nunca** vai para o app.
+2. Execute `supabase/schema.sql` em um projeto novo e depois a migração `supabase/migrations/20261126025145_p2_shared_internship_reviews.sql`. No projeto Supabase vinculado a este repositório, a migração da P2 já foi aplicada.
+3. Entre com duas contas de teste confirmadas. No projeto vinculado, `matheusfc777@gmail.com` está como aluno e `matheuserick197@gmail.com` como orientador. As senhas não ficam no repositório.
+4. Para configurar outras contas, um administrador do banco deve inserir o orientador em `p2_profiles` com `role='advisor'` e vincular o aluno por `advisor_id`. O próprio app só permite criar perfil de aluno sem orientador; não permite que o usuário se promova.
+5. No Android, use `npx expo start` e abra no Expo Go ou gere um build de desenvolvimento. No iOS, Face ID precisa de um build de desenvolvimento. Configure biometria no aparelho. No navegador, a aba abre sem biometria para permitir inspeção, mas a demonstração do recurso nativo deve ocorrer no celular.
+
+### Demonstração da prova
+
+| Cenário | Passos esperados |
+| --- | --- |
+| A: fluxo completo | Entre como aluno, abra **Compart.**, cadastre atividade e horas, sincronize; entre como orientador e aprove; volte ao aluno e atualize. O resultado vem do banco. |
+| B: segurança | Tente consultar a API sem sessão e tente inserir revisão como aluno ou atividade como orientador. O banco deve negar. |
+| C: recurso nativo | Abra **Compart.** no celular, conclua a biometria; saia da aba e repita cancelando ou falhando. O conteúdo só aparece após êxito e com sessão ativa. |
+| D: falta de rede | Após entrar e carregar o perfil, desligue a rede, salve uma atividade e veja a contagem pendente. Ligue a rede; **Atualizar e sincronizar** envia o mesmo UUID, sem duplicar. |
+| E: resiliência | Tente horas inválidas, encerre a sessão, e teste a API indisponível. O app deve mostrar erro e manter a fila local para nova tentativa. |
+
+Ao detectar uma nova revisão na consulta periódica, o app solicita permissão e agenda uma notificação local; se a permissão for negada, mostra aviso na tela. A notificação depende de o app consultar a revisão; não é push remoto.
+
+### Evidências de verificação
+
+Os resultados de RLS, API e compilação estão em [`docs/p2-verificacao.md`](docs/p2-verificacao.md). A demonstração de biometria, notificação e sincronização exige um aparelho ou emulador e duas contas com senhas válidas.

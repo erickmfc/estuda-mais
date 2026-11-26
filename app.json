@@ -5,6 +5,10 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "plugins": [
+      ["expo-local-authentication", { "faceIDPermission": "Use sua biometria para abrir os registros de estágio." }],
+      "expo-notifications"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.erickmfc.estudamais"

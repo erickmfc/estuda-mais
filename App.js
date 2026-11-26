@@ -18,6 +18,7 @@ import CadastroScreen from './src/screens/CadastroScreen';
 import ClimaScreen from './src/screens/ClimaScreen';
 import DesktopLoginScreen from './src/screens/DesktopLoginScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import P2Screen from './src/screens/P2Screen';
 import { SessionProvider, useSession } from './src/auth/SessionProvider';
 import {
   createActivity,
@@ -441,8 +442,8 @@ function InternshipScreen({ stage, onUpdateStage, onAddDay, onUpdateDay, onDelet
 }
 
 function TabBar({ active, onChange }) {
-  const tabs = [{ key: 'inicio', label: 'Início', icon: 'home-outline', activeIcon: 'home' }, { key: 'faltas', label: 'Faltas', icon: 'book-outline', activeIcon: 'book' }, { key: 'lembretes', label: 'Lembretes', icon: 'notifications-outline', activeIcon: 'notifications' }, { key: 'estagio', label: 'Estágio', icon: 'briefcase-outline', activeIcon: 'briefcase' }, { key: 'atividades', label: 'Atividades', icon: 'list-outline', activeIcon: 'list' }, { key: 'clima', label: 'Clima', icon: 'partly-sunny-outline', activeIcon: 'partly-sunny' }, { key: 'conta', label: 'Conta', icon: 'person-outline', activeIcon: 'person' }];
-  return <View style={styles.tabBar}>{tabs.map((tab) => { const selected = active === tab.key; return <ActivityPressable key={tab.key} style={styles.tabItem} onPress={() => onChange(tab.key)}><Icon name={selected ? tab.activeIcon : tab.icon} size={21} color={selected ? COLORS.primary : COLORS.muted} /><Text style={[styles.tabLabel, selected && styles.tabLabelActive]}>{tab.label}</Text></ActivityPressable>; })}</View>;
+  const tabs = [{ key: 'inicio', label: 'Início', icon: 'home-outline', activeIcon: 'home' }, { key: 'faltas', label: 'Faltas', icon: 'book-outline', activeIcon: 'book' }, { key: 'lembretes', label: 'Lembretes', icon: 'notifications-outline', activeIcon: 'notifications' }, { key: 'estagio', label: 'Estágio', icon: 'briefcase-outline', activeIcon: 'briefcase' }, { key: 'p2', label: 'Compart.', icon: 'people-outline', activeIcon: 'people' }, { key: 'atividades', label: 'Atividades', icon: 'list-outline', activeIcon: 'list' }, { key: 'clima', label: 'Clima', icon: 'partly-sunny-outline', activeIcon: 'partly-sunny' }, { key: 'conta', label: 'Conta', icon: 'person-outline', activeIcon: 'person' }];
+  return <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabBar}>{tabs.map((tab) => { const selected = active === tab.key; return <ActivityPressable key={tab.key} accessibilityRole="tab" accessibilityLabel={tab.label} accessibilityState={{ selected }} style={styles.tabItem} onPress={() => onChange(tab.key)}><Icon name={selected ? tab.activeIcon : tab.icon} size={21} color={selected ? COLORS.primary : COLORS.muted} /><Text style={[styles.tabLabel, selected && styles.tabLabelActive]}>{tab.label}</Text></ActivityPressable>; })}</ScrollView>;
 }
 
 function AppContent() {
@@ -537,6 +538,7 @@ function AppContent() {
     if (activeTab === 'faltas') return <AbsencesScreen subjects={subjects} absenceRecords={absenceRecords} onAddAbsence={addAbsence} onAddSubject={addSubject} />;
     if (activeTab === 'lembretes') return <RemindersScreen reminders={reminders} onAdd={addReminder} onToggle={toggleReminder} />;
     if (activeTab === 'estagio') return stage ? <InternshipScreen stage={stage} onUpdateStage={updateStage} onAddDay={addStageDay} onUpdateDay={updateStageDay} onDeleteDay={deleteStageDay} /> : <CreateInternshipScreen onCreate={createStage} />;
+    if (activeTab === 'p2') return <P2Screen session={session} />;
     if (activeTab === 'atividades') return <CadastroScreen activities={activities} onAddActivity={addActivity} onRemoveActivity={removeActivity} />;
     if (activeTab === 'clima') return <ClimaScreen userId={userId} />;
     if (activeTab === 'conta') return <LoginScreen session={session} />;
@@ -685,8 +687,9 @@ const styles = StyleSheet.create({
   timelineHours: { color: COLORS.teal, fontSize: 10, fontWeight: '700', marginTop: 4 },
   primaryButton: { height: 51, borderRadius: 15, backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   primaryButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
-  tabBar: { backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.line, height: 72, paddingHorizontal: 12, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
-  tabItem: { alignItems: 'center', flex: 1, justifyContent: 'center', gap: 4, minWidth: 44 },
+  tabScroll: { flexGrow: 0, backgroundColor: COLORS.card },
+  tabBar: { backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.line, height: 72, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center' },
+  tabItem: { alignItems: 'center', justifyContent: 'center', gap: 4, width: 59 },
   tabLabel: { color: COLORS.muted, fontSize: 10, fontWeight: '600' },
   tabLabelActive: { color: COLORS.primary, fontWeight: '800' },
 });
