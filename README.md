@@ -105,7 +105,7 @@ Na aba **Compart.**, o aluno envia um relato de estágio e o orientador aprova o
 
 1. Execute `npm install`, copie `.env.example` para `.env` e coloque a URL e a chave pública do projeto Supabase. A chave de serviço **nunca** vai para o app.
 2. Execute `supabase/schema.sql` em um projeto novo e depois a migração `supabase/migrations/20261126025145_p2_shared_internship_reviews.sql`. No projeto Supabase vinculado a este repositório, a migração da P2 já foi aplicada.
-3. Entre com duas contas de teste confirmadas. No projeto vinculado, `matheusfc777@gmail.com` está como aluno e `matheuserick197@gmail.com` como orientador. As senhas não ficam no repositório.
+3. Entre com duas contas de teste confirmadas. No projeto vinculado, `matheusfc777@gmail.com` está como aluno e `nichofyoficial@gmail.com` como orientador. As senhas não ficam no repositório.
 4. Para configurar outras contas, um administrador do banco deve inserir o orientador em `p2_profiles` com `role='advisor'` e vincular o aluno por `advisor_id`. O próprio app só permite criar perfil de aluno sem orientador; não permite que o usuário se promova.
 5. No Android, use `npx expo start` e abra no Expo Go ou gere um build de desenvolvimento. No iOS, Face ID precisa de um build de desenvolvimento. Configure biometria no aparelho. No navegador, a aba abre sem biometria para permitir inspeção, mas a demonstração do recurso nativo deve ocorrer no celular.
 
